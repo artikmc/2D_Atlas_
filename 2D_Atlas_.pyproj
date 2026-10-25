@@ -1,0 +1,56 @@
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>748cc288-5b3e-498b-a43a-47f97d9a0fa7</ProjectGuid>
+    <ProjectHome>.</ProjectHome>
+    <StartupFile>_2D_Atlas_main.py</StartupFile>
+    <SearchPath>
+    </SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <Name>2D_Atlas_</Name>
+    <RootNamespace>2D_Atlas_</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="animation_viewer.py" />
+    <Compile Include="atlas_interface.py" />
+    <Compile Include="atlas_loader.py" />
+    <Compile Include="class_selector.py" />
+    <Compile Include="database.py" />
+    <Compile Include="enhance_window.py" />
+    <Compile Include="file_selector.py" />
+    <Compile Include="image_grid.py" />
+    <Compile Include="image_saver.py" />
+    <Compile Include="image_splitter.py" />
+    <Compile Include="paint_app.py" />
+    <Compile Include="results_viewer.py" />
+    <Compile Include="_2D_Atlas_main.py" />
+    <Compile Include="language_manager.py" />
+    <Compile Include="theme_engine.py" />
+    <Compile Include="sound_manager.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Perechen_fail.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="flags\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
+  <!-- Uncomment the CoreCompile target to enable the Build command in
+       Visual Studio and specify your pre- and post-build commands in
+       the BeforeBuild and AfterBuild targets below. -->
+  <!--<Target Name="CoreCompile" />-->
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+</Project>
