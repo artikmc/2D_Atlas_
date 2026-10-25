@@ -28,6 +28,10 @@ class ImageSplitter(tk.Frame):
         self.atlas_image = self.processed_image # Для совместимости
 
         self.grid_enabled = False  # По умолчанию сетка выключена
+        self.current_class = None
+        self.main_frame_id = None
+        self.start_x = None
+        self.end_x = None
  
              # Настройка логирования
         logging.basicConfig(

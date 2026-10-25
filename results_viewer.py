@@ -106,7 +106,7 @@ class ResultsViewer:
             main_frames = {}
             for frame in frames:
                 frame_id, class_name, frame_data = frame
-                if class_name == "Основной кадр":
+                if class_name == "основной кадр":
                     main_frames[frame_id] = {
                         "main_frame": frame_data,
                         "classes": {}
@@ -221,12 +221,12 @@ class ResultsViewer:
                 if messagebox.askyesno("Подтверждение", "Вы уверены, что хотите удалить этот кадр?"):
                     conn = create_connection()
                     if conn is not None:
-                       if delete_frame(conn, frame_id):
-                        messagebox.showinfo("Успех", "Кадр успешно удален")
-                    else:
-                        messagebox.showerror("Ошибка", "Не удалось удалить кадр")
-                    conn.close()
-                    self.load_data()  # Обновляем таблицу
+                        if delete_frame(conn, frame_id):
+                            messagebox.showinfo("Успех", "Кадр успешно удален")
+                        else:
+                            messagebox.showerror("Ошибка", "Не удалось удалить кадр")
+                        conn.close()
+                        self.load_data()
 
     def edit_frame(self):
         """

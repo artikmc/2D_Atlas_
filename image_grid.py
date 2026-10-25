@@ -215,7 +215,7 @@ class ImageGrid(tk.Canvas):
             # Сохраняем PhotoImage
             self.tk_image = ImageTk.PhotoImage(resized)
 
-            if hasattr(self, 'image_on_canvas'):
+            if self.image_on_canvas is not None:
                 self.itemconfig(self.image_on_canvas, image=self.tk_image)
             else:
                 self.image_on_canvas = self.create_image(0, 0, anchor=tk.NW, image=self.tk_image)

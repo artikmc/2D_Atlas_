@@ -184,7 +184,7 @@ def delete_frame(conn, frame_id):
     """
     if conn is None:
         print("Ошибка: Соединение с базой данных не установлено.")
-        return []
+        return False
 
     sql = "DELETE FROM frames WHERE id = ?"
     try:
@@ -192,8 +192,10 @@ def delete_frame(conn, frame_id):
         cursor.execute(sql, (frame_id,))
         conn.commit()
         print(f"Кадр {frame_id} удален.")
+        return True
     except Error as e:
         print(f"Ошибка при удалении кадра: {e}")
+        return False
 
 def initialize_database():
     """
