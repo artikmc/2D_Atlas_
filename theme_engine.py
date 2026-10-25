@@ -1,4 +1,5 @@
 ﻿# theme_engine.py
+import tkinter as tk
 from tkinter import ttk
 
 class ThemeEngine:
