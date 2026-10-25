@@ -5,6 +5,7 @@ from file_selector import FileSelector
 from PIL import Image, ImageTk
 from language_manager import LanguageManager
 from enhance_window import EnhanceWindow
+from paint_app import PaintApp
 
 class AtlasInterface:
     def __init__(self, root):
@@ -55,10 +56,11 @@ class AtlasInterface:
         self.btn_show_results = tk.Button(self.root, command=self.show_results)
         self.btn_ai_module = tk.Button(self.root, command=self.use_ai_module)
         self.btn_settings = tk.Button(self.root, command=self.open_settings)
+        self.btn_paint = tk.Button(self.root, command=self.open_paint)
         self.btn_exit = tk.Button(self.root, command=self.root.quit)
         
         for btn in [self.btn_select_file, self.btn_show_results, 
-                   self.btn_ai_module, self.btn_settings, self.btn_exit]:
+                   self.btn_ai_module, self.btn_settings, self.btn_paint, self.btn_exit]:
             btn.pack(pady=10)
 
     def language_changed(self):
@@ -115,7 +117,12 @@ class AtlasInterface:
         self.btn_show_results.config(text=LanguageManager.get_text("results_btn"))
         self.btn_ai_module.config(text=LanguageManager.get_text("ai_btn"))
         self.btn_settings.config(text=LanguageManager.get_text("settings_btn"))
+        self.btn_paint.config(text=LanguageManager.get_text("paint_btn"))
         self.btn_exit.config(text=LanguageManager.get_text("exit_btn"))
+    
+    def open_paint(self):
+        """Открывает редактор-палитру."""
+        PaintApp(self.root)
 
 # Основной код запуска приложения
 if __name__ == "__main__":
