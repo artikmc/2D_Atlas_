@@ -28,6 +28,7 @@
     <Compile Include="database.py" />
     <Compile Include="enhance_window.py" />
     <Compile Include="file_selector.py" />
+    <Compile Include="frame_detector.py" />
     <Compile Include="image_grid.py" />
     <Compile Include="image_saver.py" />
     <Compile Include="image_splitter.py" />

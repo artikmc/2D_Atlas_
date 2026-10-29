@@ -36,9 +36,6 @@ class ClassSelector:
         return []  # Возвращаем пустой список, если не удалось подключиться
     
     def add_class(self, class_name):
-        if class_name:
-            logging.warning(f"Класс '{class_name}' уже существует, добавление пропущено.")
-            return
 
         """Добавляет новый класс в базу данных."""
         conn = create_connection()

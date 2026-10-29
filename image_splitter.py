@@ -2,7 +2,7 @@
 from tkinter import ttk, simpledialog, messagebox
 from PIL import Image, ImageTk, ImageEnhance
 from io import BytesIO
-from database import create_connection, insert_frame, get_all_classes
+from database import create_connection, insert_frame, get_all_classes, get_or_create_character
 from animation_viewer import AnimationViewer
 from class_selector import ClassSelector  # Импортируем ClassSelector
 from image_grid import ImageGrid  # Импортируем ImageGrid
@@ -30,6 +30,7 @@ class ImageSplitter(tk.Frame):
         self.grid_enabled = False  # По умолчанию сетка выключена
         self.current_class = None
         self.main_frame_id = None
+        self.character_id = None
         self.start_x = None
         self.end_x = None
  
@@ -56,12 +57,12 @@ class ImageSplitter(tk.Frame):
         logging.debug("ImageGrid создан и упакован")
         
         # Создаем Canvas и виджеты
-        self.canvas = tk.Canvas(self)
-        self.canvas.pack(fill=tk.BOTH, expand=True)
+        #self.canvas = tk.Canvas(self)
+        #self.canvas.pack(fill=tk.BOTH, expand=True)
 
         # Отображаем изображение сразу
-        self.tk_image = ImageTk.PhotoImage(self.processed_image)
-        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)    
+        #self.tk_image = ImageTk.PhotoImage(self.processed_image)
+        #self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)    
 
         # Создаем фрейм для кнопок классов
         self.class_button_frame = tk.Frame(self)  
@@ -204,9 +205,29 @@ class ImageSplitter(tk.Frame):
             self.current_class = selected_class
             logging.info(f"Выбран класс: {self.current_class}")
 
+    def ensure_character(self):
+        """Возвращает ID текущего персонажа; при отсутствии спрашивает имя один раз."""
+        if self.character_id is not None:
+            return self.character_id
+        name = simpledialog.askstring("Персонаж", "Имя персонажа для этого атласа:")
+        if not name:
+            return None
+        conn = create_connection()
+        if conn is None:
+            return None
+        try:
+            self.character_id = get_or_create_character(conn, name.strip())
+            return self.character_id
+        finally:
+            conn.close()
+
     def save_main_frame(self):
         """Сохраняет выделенную область как основной кадр."""
         logging.debug("Начало сохранения основного кадра")
+        if self.character_id is None:
+            if not self.ensure_character():
+                messagebox.showwarning("Персонаж", "Без персонажа кадр не сохраняется.")
+                return
 
         # Получаем координаты выделения из ImageGrid
         self.start_x, self.start_y, self.end_x, self.end_y = self.image_grid.get_selection_coords()
@@ -240,10 +261,10 @@ class ImageSplitter(tk.Frame):
                 with BytesIO() as output:
                     self.main_frame.save(output, format="PNG")
                     frame_data = output.getvalue()
-                cursor = conn.cursor()
-                cursor.execute("INSERT INTO frames (class_name, frame_data) VALUES (?, ?)", ("основной кадр", frame_data))
-                self.main_frame_id = cursor.lastrowid  # Получаем ID основного кадра
-                conn.commit()
+                self.main_frame_id = insert_frame(conn, "основной кадр", frame_data,
+                                     character_id=self.character_id)
+                if self.main_frame_id is None:
+                    raise Exception("insert_frame вернул None — см. текст ошибки в консоли")
                 logging.info(f"Основной кадр сохранен в базе данных. ID: {self.main_frame_id}")
 
             except Exception as e:
@@ -259,6 +280,7 @@ class ImageSplitter(tk.Frame):
 
     def open_animation_viewer(self):
         """Открывает AnimationViewer с выделенной областью."""
+        self.start_x, self.start_y, self.end_x, self.end_y = self.image_grid.get_selection_coords()
             # Вырезаем область из атласа
         if not all([self.start_x, self.start_y, self.end_x, self.end_y]):
             error_msg = LanguageManager.get_text("selection_error")
@@ -303,7 +325,11 @@ class ImageSplitter(tk.Frame):
             logging.error(error_msg)
             messagebox.showerror("Ошибка", error_msg)
             return
-              
+
+        if self.main_frame_id is None:
+            messagebox.showwarning("Основной кадр", "Сначала сохраните основной кадр (кнопка «Основной кадр»), потом добавляйте класс.")
+            return
+             
         if not isinstance(selected_region, Image.Image):
            error_msg = "Ошибка: Выделенная область не является изображением."
            logging.error(error_msg)
@@ -317,7 +343,7 @@ class ImageSplitter(tk.Frame):
             self.last_selected_region = selected_region
 
             # Передаем в AnimationViewer
-            AnimationViewer(self.master, self.last_selected_region, self.current_class, self.main_frame_id)
+            AnimationViewer(self.master, self.last_selected_region, self.current_class, self.main_frame_id, self.character_id)
             logging.info(f"AnimationViewer открыт для класса '{self.current_class}' с ID основного кадра: {self.main_frame_id}")
         except Exception as e:
             logging.error(f"Ошибка при открытии AnimationViewer: {e}")

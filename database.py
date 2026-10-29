@@ -30,6 +30,7 @@ def create_tables(conn):
         class_name TEXT NOT NULL,
         frame_data BLOB NOT NULL,
         main_frame_id INTEGER,  -- ID основного кадра
+        character_id INTEGER,   -- ID персонажа, к которому относится кадр
         FOREIGN KEY (main_frame_id) REFERENCES frames(id)
     );
     """
@@ -48,11 +49,22 @@ def create_tables(conn):
         name TEXT NOT NULL UNIQUE
     );
     """
+    sql_create_characters_table = """
+    CREATE TABLE IF NOT EXISTS characters (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        note TEXT
+    );
+    """
+
     sql_create_index_class_name = """
     CREATE INDEX IF NOT EXISTS idx_class_name ON frames (class_name);
     """
     sql_create_index_main_frame_id = """
     CREATE INDEX IF NOT EXISTS idx_main_frame_id ON frames (main_frame_id);
+    """
+    sql_create_index_character_id = """
+    CREATE INDEX IF NOT EXISTS idx_character_id ON frames (character_id);
     """
 
     try:
@@ -60,37 +72,44 @@ def create_tables(conn):
         cursor.execute(sql_create_frames_table)
         cursor.execute(sql_create_frame_classes_table)
         cursor.execute(sql_create_classes_table)  # Создаем таблицу classes
+        cursor.execute(sql_create_characters_table)  # Создаем таблицу characters
         cursor.execute(sql_create_index_class_name)
         cursor.execute(sql_create_index_main_frame_id)
+        cursor.execute(sql_create_index_character_id)
         print("Таблицы созданы или уже существуют.")
         conn.commit()
     except Error as e:
         print(f"Ошибка при создании таблиц: {e}")
 
-def insert_frame(conn, class_name, frame_data):
+def insert_frame(conn, class_name, frame_data, main_frame_id=None, character_id=None):
     """
     Вставляет запись о кадре в базу данных.
 
     :param conn: Объект соединения с базой данных.
     :param class_name: Название класса (например, "ходьба").
-    :param frame_data: Данные кадра (например, бинарные данные изображения).
+    :param frame_data: Данные кадра (бинарные данные изображения).
+    :param main_frame_id: ID основного кадра (для кадров классов).
+    :param character_id: ID персонажа.
+    :return: ID вставленного кадра (lastrowid) либо None при ошибке.
     """
     if not class_name:
         print("Ошибка: class_name не может быть пустым.")
-        return
+        return None
 
     if conn is None:
         print("Ошибка: Соединение с базой данных не установлено.")
-        return
-    
-    sql = "INSERT INTO frames (class_name, frame_data) VALUES (?, ?)"
+        return None
+
+    sql = "INSERT INTO frames (class_name, frame_data, main_frame_id, character_id) VALUES (?, ?, ?, ?)"
     try:
         cursor = conn.cursor()
-        cursor.execute(sql, (class_name, frame_data))
+        cursor.execute(sql, (class_name, frame_data, main_frame_id, character_id))
         conn.commit()
-        print(f"Кадр класса '{class_name}' успешно добавлен.")
+        print(f"Кадр класса '{class_name}' успешно добавлен (ID: {cursor.lastrowid}).")
+        return cursor.lastrowid
     except Error as e:
         print(f"Ошибка при добавлении кадра: {e}")
+        return None
 
 
 def get_frames_by_class(conn, class_name):
@@ -218,7 +237,7 @@ def get_all_classes(conn):
         print("Ошибка: Соединение с базой данных не установлено.")
         return []
 
-    sql = "SELECT DISTINCT class_name FROM frames"
+    sql = "SELECT DISTINCT class_name FROM frames WHERE class_name != 'основной кадр'"
     try:
         cursor = conn.cursor()
         cursor.execute(sql)
@@ -254,3 +273,48 @@ def insert_class(conn, class_name):
             print(f"Класс '{class_name}' уже существует в базе данных.")
     except Error as e:
         print(f"Ошибка при добавлении класса: {e}")
+
+def get_or_create_character(conn, name):
+    """
+    Возвращает ID персонажа по имени; если такого нет — создаёт его.
+
+    :param conn: Объект соединения с базой данных.
+    :param name: Имя персонажа.
+    :return: ID персонажа либо None при ошибке.
+    """
+    if conn is None:
+        print("Ошибка: Соединение с базой данных не установлено.")
+        return None
+    if not name:
+        print("Ошибка: имя персонажа не может быть пустым.")
+        return None
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM characters WHERE name = ?", (name,))
+        row = cursor.fetchone()
+        if row:
+            return row[0]
+        cursor.execute("INSERT INTO characters (name) VALUES (?)", (name,))
+        conn.commit()
+        print(f"Персонаж '{name}' создан (ID: {cursor.lastrowid}).")
+        return cursor.lastrowid
+    except Error as e:
+        print(f"Ошибка при получении/создании персонажа: {e}")
+        return None
+
+
+def get_all_characters(conn):
+    """
+    Возвращает список всех персонажей как [(id, name), ...].
+    """
+    characters = []
+    if conn is None:
+        print("Ошибка: Соединение с базой данных не установлено.")
+        return characters
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name FROM characters ORDER BY name")
+        characters = cursor.fetchall()
+    except Error as e:
+        print(f"Ошибка при получении списка персонажей: {e}")
+    return characters
