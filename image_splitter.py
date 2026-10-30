@@ -124,6 +124,13 @@ class ImageSplitter(tk.Frame):
         )
         self.btn_add_class.pack(side=tk.LEFT, padx=5)
 
+        # Кнопка авто-сетки (детекция рядов/кадров поверх атласа)
+        self.auto_grid_enabled = False
+        self.btn_auto_grid = tk.Button(button_frame, text="Авто-сетка", command=self.toggle_auto_grid)
+        self.btn_auto_grid.pack(side=tk.LEFT, padx=5)
+        self._btn_auto_grid_default_bg = self.btn_auto_grid.cget("bg")
+
+
         # Кнопка для выхода
         self.btn_exit = tk.Button(button_frame, text=LanguageManager.get_text("exit"), command=self.exit_app)
         self.btn_exit.pack(side=tk.LEFT, padx=5)
@@ -229,11 +236,11 @@ class ImageSplitter(tk.Frame):
                 messagebox.showwarning("Персонаж", "Без персонажа кадр не сохраняется.")
                 return
 
-        # Получаем координаты выделения из ImageGrid
+        # Получаем координаты выделения из ImageGrid (в пикселях оригинала)
         self.start_x, self.start_y, self.end_x, self.end_y = self.image_grid.get_selection_coords()
 
-        # Проверяем, что координаты выделения заданы
-        if not all([self.start_x, self.start_y, self.end_x, self.end_y]):
+        # Выделение есть? (0 — допустимая координата, поэтому сравниваем с None, а не через all())
+        if self.start_x is None or self.end_x is None:
             error_msg = LanguageManager.get_text("selection_error")
             logging.error(error_msg)
             messagebox.showerror(LanguageManager.get_text("no_selection"), error_msg)
@@ -281,8 +288,7 @@ class ImageSplitter(tk.Frame):
     def open_animation_viewer(self):
         """Открывает AnimationViewer с выделенной областью."""
         self.start_x, self.start_y, self.end_x, self.end_y = self.image_grid.get_selection_coords()
-            # Вырезаем область из атласа
-        if not all([self.start_x, self.start_y, self.end_x, self.end_y]):
+        if self.start_x is None or self.end_x is None:
             error_msg = LanguageManager.get_text("selection_error")
             logging.error(error_msg)
             messagebox.showerror(LanguageManager.get_text("no_selection"), error_msg)
@@ -312,8 +318,8 @@ class ImageSplitter(tk.Frame):
         selected_region = self.atlas_image.crop((x3, y3, x4, y4))
         logging.debug(f"Область вырезана: ({x3}, {y3}) -> ({x4}, {y4})")
               
-        # Проверяем, что координаты выделения заданы
-        if not all([self.start_x, self.start_y, self.end_x, self.end_y]):
+        # Повторная проверка не нужна — данные те же; оставляем как защиту от None
+        if self.start_x is None or self.end_x is None:
            error_msg = "Ошибка: Координаты выделения не заданы."
            logging.error(error_msg)
            messagebox.showerror("Ошибка", error_msg)
@@ -348,6 +354,15 @@ class ImageSplitter(tk.Frame):
         except Exception as e:
             logging.error(f"Ошибка при открытии AnimationViewer: {e}")
             messagebox.showerror("Ошибка", f"Не удалось открыть AnimationViewer: {e}")
+
+    def toggle_auto_grid(self):
+        """Включает/выключает детекционную сетку в ImageGrid и обновляет подпись кнопки."""
+        self.auto_grid_enabled = self.image_grid.toggle_auto_grid()
+        if self.auto_grid_enabled:
+            self.btn_auto_grid.config(text="Авто-сетка: ВКЛ", bg="#00c853")
+        else:
+            self.btn_auto_grid.config(text="Авто-сетка", bg=self._btn_auto_grid_default_bg)
+        logging.info(f"Авто-сетка {'включена' if self.auto_grid_enabled else 'выключена'}")
 
     def toggle_grid(self):
         """Включает/выключает сетку."""

@@ -282,6 +282,16 @@ class AnimationViewer(tk.Toplevel):
 
         conn = create_connection()
         if conn is not None:
+            # Перезапись класса: убираем старые кадры этого класса у этого основного кадра
+            cursor = conn.cursor()
+            cursor.execute(
+                "DELETE FROM frames WHERE class_name = ? AND main_frame_id = ?",
+                (self.class_name, self.main_frame_id))
+            removed = cursor.rowcount
+            conn.commit()
+            if removed:
+                print(f"Перезаписано: удалено {removed} старых кадров класса '{self.class_name}'.")
+
             for frame in self.frames_pil:
                 with BytesIO() as output:
                     frame.save(output, format="PNG")  # PIL пишет валидный PNG в поток
