@@ -258,9 +258,23 @@ class AnimationViewer(tk.Toplevel):
             self.after(self.speed_slider.get(), self.animate)
 
     def open_paint(self):
-        """Открывает окно рисования."""
-        paint_app = PaintApp(self)  # Создает экземпляр PaintApp
-        paint_app.grab_set()  # Запретить взаимодействие с родительским окном, пока открыто рисование
+        """Открывает редактор текущего кадра; после закрытия кадр возвращается в плёнку."""
+        if not self.frames_pil:
+            print("Нет кадров для редактирования — сначала «Разделить на кадры».")
+            return
+        idx = self.current_frame_index
+        paint_app = PaintApp(self, image=self.frames_pil[idx])
+
+        def on_closed():
+            edited = paint_app.image.convert("RGBA")
+            self.frames_pil[idx] = edited
+            self.show_frame(idx)
+            self.build_filmstrip()
+            print(f"Кадр {idx + 1} обновлён. Нажмите «Сохранить кадры», чтобы записать в базу.")
+
+        paint_app.protocol("WM_DELETE_WINDOW",
+                           lambda: (paint_app.on_close(), on_closed()))
+        paint_app.grab_set()
     
     def next_frame(self):
          """Переключает на следующий кадр."""
