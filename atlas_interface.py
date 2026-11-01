@@ -6,6 +6,7 @@ from PIL import Image, ImageTk
 from language_manager import LanguageManager
 from enhance_window import EnhanceWindow
 from paint_app import PaintApp
+from export_window import ExportWindow
 
 class AtlasInterface:
     def __init__(self, root):
@@ -80,9 +81,8 @@ class AtlasInterface:
         ResultsViewer(self.root)  # Создаем экземпляр ResultsViewer
 
     def use_ai_module(self):
-        """Работа с модулем ИИ."""
-        # Реализуйте функциональность ИИ модуля
-        pass
+        """Работа с модулем ИИ: окно экспорта датасета."""
+        ExportWindow(self.root)
 
     def clear_widgets(self):
         """Очистить все виджеты на экране."""
