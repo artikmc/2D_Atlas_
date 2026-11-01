@@ -25,11 +25,32 @@ class AnimationViewer(tk.Toplevel):
         # Создаем виджеты
         self.create_widgets()
 
-    def create_widgets(self):      
-        # Canvas для отображения кадров
-        self.canvas = tk.Canvas(self, width=self.selected_region.width,
-                                height=self.selected_region.height)
-        self.canvas.pack()
+      
+    def create_widgets(self):
+        # Вертикальный отступ, чтобы рамка реза (толщиной 2px) не прилипала к верху
+        # и не «съедала» первую строку пикселей спрайта.
+        self.TOP_PAD = 10
+        self.zoom = 1
+        # Границы ширины окна просмотра: не даём окну схлопнуться в узкую щель
+        # и не даём разрастись дальше экрана.
+        self.MIN_W = 360
+        self.MAX_W = max(360, self.winfo_screenwidth() - 80)
+
+        vis_w = min(max(self.selected_region.width, self.MIN_W), self.MAX_W)
+        vis_h = self.selected_region.height + 2 * self.TOP_PAD
+        self.canvas = tk.Canvas(self, width=vis_w, height=vis_h,
+                                highlightthickness=0)   # фон по умолчанию (как окно), не чёрный
+        self.canvas_scroll = tk.Scrollbar(self, orient=tk.HORIZONTAL, command=self.canvas.xview)
+        self.canvas.configure(xscrollcommand=self.canvas_scroll.set)
+        self.canvas.pack(pady=(8, 2), padx=6)            # отступ сверху; ширину задаёт сам контент
+        self.canvas_scroll.pack_forget()                 # прокрутка нужна только при переполнении
+
+        # Ползунок увеличения кадра: от 1× до 8× (NEAREST — пиксели не мылятся)
+        self.zoom_slider = tk.Scale(self, from_=1, to=8, orient=tk.HORIZONTAL,
+                                    label="Увеличение", length=200)
+        self.zoom_slider.set(1)
+        self.zoom_slider.pack(pady=2)
+        self.zoom_slider.configure(command=self.set_zoom)
 
         # Слайдер для настройки количества кадров
         self.num_frames_slider = tk.Scale(self, from_=1, to=10, orient=tk.HORIZONTAL,
@@ -75,6 +96,10 @@ class AnimationViewer(tk.Toplevel):
         btn_save_frames = tk.Button(button_frame, text="Сохранить кадры", command=self.save_frames)
         btn_save_frames.pack(side=tk.LEFT, padx=5)
 
+        # Выравнивание кадров по общему холсту
+        btn_align = tk.Button(button_frame, text="Выровнять кадры", command=self.align_frames)
+        btn_align.pack(side=tk.LEFT, padx=5)
+
         # Кнопки для управления анимацией
         btn_start = tk.Button(button_frame, text="Запустить анимацию", command=self.start_animation)
         btn_start.pack(side=tk.LEFT, padx=5)
@@ -112,36 +137,80 @@ class AnimationViewer(tk.Toplevel):
         btn_rotate = tk.Button(edit_frame, text="Повернуть", command=self.rotate_frame)
         btn_rotate.pack(side=tk.LEFT, padx=5)
 
+
+    def set_zoom(self, value):
+        """Меняет увеличение и перерисовывает текущий вид (превью или кадр)."""
+        self.zoom = max(1, min(8, int(float(value))))
+        if self.frames_pil:
+            self.show_frame(self.current_frame_index)
+        else:
+            self.draw_split_preview()
+
+    def _scaled(self, img):
+        """Увеличение NEAREST на self.zoom (без размытия пикселей)."""
+        if self.zoom == 1:
+            return img
+        return img.resize((img.width * self.zoom, img.height * self.zoom), Image.NEAREST)
+
+    def _fit_canvas(self, disp_w, disp_h):
+        """Подгоняет окно просмотра под размер увеличенного кадра и центрирует его.
+
+        Возвращает (ox, oy) — экранные координаты верхнего левого угла изображения,
+        чтобы все линии реза рисовать относительно них.
+        """
+        pad = self.TOP_PAD
+        cw = min(max(disp_w, self.MIN_W), self.MAX_W)   # ширина окна = ширине контента
+        ch = disp_h + 2 * pad                            # высота растёт вместе с зумом
+        self.canvas.config(width=cw, height=ch)
+        # центрируем по горизонтали; если контент шире окна — прокрутка по центру
+        ox = max(0, (cw - disp_w) // 2)
+        oy = pad
+        if disp_w > cw:
+            self.canvas.config(scrollregion=(0, 0, disp_w, ch))
+            self.canvas_scroll.pack(fill=tk.X, padx=6)
+            self.canvas.xview_moveto((disp_w - cw) / 2 / disp_w)
+        else:
+            self.canvas.config(scrollregion=(0, 0, cw, ch))
+            self.canvas_scroll.pack_forget()
+        return ox, oy
+
     def draw_split_preview(self):
         """Предпросмотр: линии реза — там, где их реально сделает split_frames."""
         if self.frames_pil:
             self.split_frames()
             return
+        z = self.zoom
+        disp = self._scaled(self.selected_region)
+        ox, oy = self._fit_canvas(disp.width, disp.height)
+        self.tk_image = ImageTk.PhotoImage(disp)
         self.canvas.delete("all")
-        self.tk_image = ImageTk.PhotoImage(self.selected_region)
-        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image)
+        self.canvas.create_image(ox, oy, anchor=tk.NW, image=self.tk_image)
         w, h = self.selected_region.size
 
         detected = detect_frames(self.selected_region)
         if detected["rows"]:
             row = max(detected["rows"], key=lambda r: len(r["frames"]))
-            y0, y1 = row["y0"], row["y1"] + 1
-            self.canvas.create_rectangle(0, y0, w, y1, outline="#00ff7f", width=2)
+            y0 = oy + row["y0"] * z
+            y1 = oy + (row["y1"] + 1) * z
+            self.canvas.create_rectangle(ox, y0, ox + w * z, y1, outline="#00ff7f", width=2)
             for i, (fx0, fx1) in enumerate(row["frames"], 1):
-                self.canvas.create_line(fx0 - 2, y0, fx0 - 2, y1, fill="#00ff7f", dash=(4, 2))
-                self.canvas.create_line(fx1 + 3, y0, fx1 + 3, y1, fill="#00ff7f", dash=(4, 2))
-                self.canvas.create_text((fx0 + fx1) // 2, max(8, y0 - 6), text=str(i),
-                                        fill="#00ff7f", font=("Arial", 10, "bold"))
-            self.frame_label.config(text=f"Детекция видит {len(row['frames'])} кадров — жмите «Разделить»")
+                self.canvas.create_line(ox + (fx0 - 2) * z, y0, ox + (fx0 - 2) * z, y1,
+                                        fill="#00ff7f", dash=(4, 2))
+                self.canvas.create_line(ox + (fx1 + 3) * z, y0, ox + (fx1 + 3) * z, y1,
+                                        fill="#00ff7f", dash=(4, 2))
+                self.canvas.create_text(ox + ((fx0 + fx1) // 2) * z, max(oy + 6, y0 - 8),
+                                        text=str(i), fill="#00ff7f", font=("Arial", 10, "bold"))
+            self.frame_label.config(text=f"Детекция видит {len(row['frames'])} кадров — жмите «Разделить»  (×{z})")
         else:
             n = self.num_frames_slider.get()
             fw = w // n
             for i in range(1, n):
-                self.canvas.create_line(i * fw, 0, i * fw, h, fill="#00ff7f", width=2, dash=(4, 2))
+                self.canvas.create_line(ox + i * fw * z, oy, ox + i * fw * z, oy + h * z,
+                                        fill="#00ff7f", width=2, dash=(4, 2))
             for i in range(n):
-                self.canvas.create_text(i * fw + fw // 2, 12, text=str(i + 1),
+                self.canvas.create_text(ox + (i * fw + fw // 2) * z, oy + 12, text=str(i + 1),
                                         fill="#00ff7f", font=("Arial", 11, "bold"))
-            self.frame_label.config(text=f"Кадры не детектятся — равный рез на {n}")
+            self.frame_label.config(text=f"Кадры не детектятся — равный рез на {n}  (×{z})")
 
     def build_filmstrip(self):
         """Строим плёнку: все кадры миниатюрами, клик = показать кадр."""
@@ -212,21 +281,15 @@ class AnimationViewer(tk.Toplevel):
             self.show_frame(0)
 
     def show_frame(self, index):
-        """Отображает кадр по центру canvas, подогнанным по размеру."""
+        """Отображает кадр по центру; окно просмотра растёт вместе с увеличением."""
         if not (0 <= index < len(self.frames_pil)):
             return
         self.current_frame_index = index
-        frame = self.frames_pil[index]
-        cw = int(self.canvas.cget("width"))
-        ch = int(self.canvas.cget("height"))
-        # Подгоняем кадр под окно с сохранением пропорций (NEAREST — чтобы пиксели не мылились)
-        scale = min(cw / frame.width, ch / frame.height)
-        if scale != 1:
-            frame = frame.resize((max(1, int(frame.width * scale)),
-                                  max(1, int(frame.height * scale))), Image.NEAREST)
-        photo = ImageTk.PhotoImage(frame)
+        disp = self._scaled(self.frames_pil[index])
+        ox, oy = self._fit_canvas(disp.width, disp.height)
+        photo = ImageTk.PhotoImage(disp)
         self.canvas.delete("all")
-        self.canvas.create_image(cw // 2, ch // 2, anchor=tk.CENTER, image=photo)
+        self.canvas.create_image(ox, oy, anchor=tk.NW, image=photo)
         self.canvas.image = photo  # держим ссылку от сборщика мусора
         self.strip_canvas.delete("sel_rect")
         if index < len(self.strip_cells):
@@ -288,11 +351,53 @@ class AnimationViewer(tk.Toplevel):
             return
         self.show_frame((self.current_frame_index - 1) % len(self.frames))
 
+    def align_frames(self, silent=False):
+        """Выравнивает кадры по общему холсту: центр содержимого по X, общий низ.
+
+        Холст = самая большая ширина × самая большая высота среди кадров.
+        Кадр вставляется так, чтобы центр его непрозрачного содержимого совпал
+        с центром холста, а низ содержимого лёг на общую базовую линию.
+        Ничего не обрезается: холст только дополняется прозрачными полями.
+        """
+        if not self.frames_pil:
+            print("Выравнивать нечего: кадров нет.")
+            return
+
+        sizes = [(f.width, f.height) for f in self.frames_pil]
+        W, H = max(w for w, _ in sizes), max(h for _, h in sizes)
+        if len(set(sizes)) == 1:
+            if not silent:
+                print(f"Выравнивание не нужно: все кадры уже {W}×{H}.")
+            return
+
+        aligned = []
+        for frame in self.frames_pil:
+            canvas = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+            bbox = frame.getchannel("A").getbbox()
+            if bbox is not None:
+                bx0, by0, bx1, by1 = bbox
+                # центр содержимого -> центр холста, не выходя за его края
+                dx = W // 2 - (bx0 + bx1) // 2
+                dx = max(-bx0, min(W - bx1, dx))
+                dy = H - by1                  # низ содержимого -> низ холста
+                canvas.paste(frame, (dx, dy))
+            aligned.append(canvas)
+
+        self.frames_pil = aligned
+        self.frames = [ImageTk.PhotoImage(f) for f in self.frames_pil]
+        self.build_filmstrip()
+        self.show_frame(min(self.current_frame_index, len(self.frames_pil) - 1))
+        print(f"Кадры выровнены по общему холсту {W}×{H} "
+              f"(было {len(set(sizes))} разных размеров: {sorted(set(sizes))}).")
+
     def save_frames(self):
         """Сохраняет анимацию в базу данных."""
         if not self.frames:
             print("Ошибка: Нет кадров для сохранения.")
             return
+        # перед записью приводим кадры к одному размеру — иначе в базе и в
+        # датасете окажутся кадры разной ширины и анимация будет «прыгать»
+        self.align_frames(silent=True)
 
         conn = create_connection()
         if conn is not None:

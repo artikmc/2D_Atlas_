@@ -40,6 +40,7 @@
     <Compile Include="sound_manager.py" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="atlas_database.db" />
     <Content Include="Perechen_fail.txt" />
   </ItemGroup>
   <ItemGroup>

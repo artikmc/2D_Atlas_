@@ -145,18 +145,23 @@ class PaintApp(tk.Toplevel):
         self.canvas.bind("<Alt-Button-1>", self.on_alt_click)   # Alt+клик — быстро взять цвет
 
     def _bind_keys(self):
-        """Горячие клавиши. Стрелки — только на холсте, чтобы не конфликтовать с ползунками."""
+        """Горячие клавиши.
+
+        Ctrl+Z/Ctrl+Y — только на окне: событие и так доходит до окна через
+        bindtags виджета с фокусом. Привязка ещё и на холсте давала двойной
+        вызов — одно нажатие отменяло два действия.
+        Стрелки — только на холсте, чтобы не сбивать ползунки.
+        """
         for seq in ("<Control-z>", "<Control-Z>"):
             self.bind(seq, lambda e: self.undo())
-            self.canvas.bind(seq, lambda e: self.undo())
         for seq in ("<Control-y>", "<Control-Y>", "<Control-Shift-Z>", "<Control-Shift-z>"):
             self.bind(seq, lambda e: self.redo())
-            self.canvas.bind(seq, lambda e: self.redo())
         for key, (dx, dy) in (("Left", (-1, 0)), ("Right", (1, 0)),
                               ("Up", (0, -1)), ("Down", (0, 1))):
             self.canvas.bind(f"<{key}>", lambda e, dx=dx, dy=dy: self.shift_image(dx, dy))
             self.canvas.bind(f"<Shift-{key}>", lambda e, dx=dx, dy=dy: self.shift_image(dx * 10, dy * 10))
         self.canvas.bind("<Button-1>", lambda e: self.canvas.focus_set(), add="+")
+
 
     def language_changed(self):
         """Вызывается при смене языка."""
@@ -216,12 +221,30 @@ class PaintApp(tk.Toplevel):
         self._after_image_change("Зеркало")
 
     def shift_image(self, dx, dy):
-        """Сдвигает кадр на (dx, dy) пикселей; освободившееся — прозрачное."""
+        """Сдвигает кадр на (dx, dy) пикселей без потери пикселей.
+
+        Кадр расширяется ровно на столько, чтобы содержимое не ушло за край:
+        влево/вправо — по горизонтали, вверх/вниз — по вертикали.
+        """
         self._push_undo()
-        shifted = Image.new("RGBA", self.image.size, (0, 0, 0, 0))
-        shifted.paste(self.image, (dx, dy))
-        self.image = shifted
+        self.image = self._shift_keep_content(self.image, dx, dy)
         self._after_image_change(f"Сдвиг ({dx:+d}, {dy:+d})")
+
+    @staticmethod
+    def _shift_keep_content(img, dx, dy):
+        """Сдвиг с расширением холста: ни один видимый пиксель не теряется."""
+        bbox = img.getchannel("A").getbbox()      # рамка непрозрачного содержимого
+        if bbox is None:                          # кадр полностью прозрачный
+            return img
+        x0, y0, x1, y1 = bbox
+        w, h = img.size
+        left = max(0, -(x0 + dx))                 # сколько добрать слева
+        right = max(0, (x1 + dx) - w)             # сколько добрать справа
+        top = max(0, -(y0 + dy))                  # сколько добрать сверху
+        bottom = max(0, (y1 + dy) - h)            # сколько добрать снизу
+        new = Image.new("RGBA", (w + left + right, h + top + bottom), (0, 0, 0, 0))
+        new.paste(img, (dx + left, dy + top))
+        return new
 
     # ---------------- масштаб ----------------
     def set_zoom(self, value):
