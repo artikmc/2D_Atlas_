@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
-"""Р“РµРЅРµСЂР°С†РёСЏ РєР°РґСЂРѕРІ СЃРїСЂР°Р№С‚Р° С‡РµСЂРµР· diffusers. Р—Р°РїСѓСЃРєР°РµС‚СЃСЏ python РР— venv kohya_ss.
+"""Генерация кадров спрайта через diffusers. Запускается python ИЗ venv kohya_ss.
 
-Р­С‚РѕС‚ С„Р°Р№Р» РќРРљРћР“Р”Рђ РЅРµ РёРјРїРѕСЂС‚РёСЂСѓРµС‚СЃСЏ РїСЂРѕРіСЂР°РјРјРѕР№: torch Рё diffusers СЃС‚РѕСЏС‚ С‚РѕР»СЊРєРѕ
-РІ РІРёСЂС‚СѓР°Р»СЊРЅРѕРј РѕРєСЂСѓР¶РµРЅРёРё kohya, Р° GUI СЂР°Р±РѕС‚Р°РµС‚ РЅР° СЃРёСЃС‚РµРјРЅРѕРј Python. РџРѕСЌС‚РѕРјСѓ
-ai_generate.py РІС‹Р·С‹РІР°РµС‚ СЌС‚РѕС‚ СЃРєСЂРёРїС‚ РѕС‚РґРµР»СЊРЅС‹Рј РїСЂРѕС†РµСЃСЃРѕРј Рё С‡РёС‚Р°РµС‚ РµРіРѕ stdout.
+Этот файл НИКОГДА не импортируется программой: torch и diffusers стоят только
+в виртуальном окружении kohya, а GUI работает на системном Python. Поэтому
+ai_generate.py вызывает этот скрипт отдельным процессом и читает его stdout.
 
-РџРѕС‡РµРјСѓ РѕРґРёРЅ Р·Р°РїСѓСЃРє РЅР° РІСЃРµ РєР°РґСЂС‹: Р·Р°РіСЂСѓР·РєР° 2 Р“Р‘ РІРµСЃРѕРІ Рё LoRA Р·Р°РЅРёРјР°РµС‚ РґРµСЃСЏС‚РєРё
-СЃРµРєСѓРЅРґ. Р•СЃР»Рё РІС‹Р·С‹РІР°С‚СЊ СЃРєСЂРёРїС‚ РЅР° РєР°Р¶РґС‹Р№ РєР»Р°СЃСЃ (СЃС‚РѕСЏРЅРёРµ, Р±РµРі, ...), РѕРґРЅРѕ Рё С‚Рѕ Р¶Рµ
-РіСЂСѓР·РѕР»РѕСЃСЊ Р±С‹ РїСЏС‚СЊ СЂР°Р·. РџРѕСЌС‚РѕРјСѓ СЃРєСЂРёРїС‚ РїРѕР»СѓС‡Р°РµС‚ JSON-Р·Р°РґР°РЅРёРµ СЃРѕ СЃРїРёСЃРєРѕРј Р·Р°РґР°С‡ Рё
-РіСЂСѓР·РёС‚ РїР°Р№РїР»Р°Р№РЅ СЂРѕРІРЅРѕ РѕРґРёРЅ СЂР°Р·.
+Почему один запуск на все кадры: загрузка 2 ГБ весов и LoRA занимает десятки
+секунд. Если вызывать скрипт на каждый класс (стояние, бег, ...), одно и то же
+грузолось бы пять раз. Поэтому скрипт получает JSON-задание со списком задач и
+грузит пайплайн ровно один раз.
 
-Р¤РѕСЂРјР°С‚ Р·Р°РґР°РЅРёСЏ (job.json), РµРіРѕ РїРёС€РµС‚ ai_generate.py:
+Формат задания (job.json), его пишет ai_generate.py:
 
     {
       "model": "G:/models/dreamshaper_8.safetensors",
@@ -28,17 +28,17 @@ ai_generate.py РІС‹Р·С‹РІР°РµС‚ СЌС‚РѕС‚ СЃРєСЂРёРїС‚ РѕС‚РґРµР»СЊРЅС‹Рј РїСЂРѕС
       ]
     }
 
-РЎС‚СЂРѕРєРё, РєРѕС‚РѕСЂС‹Рµ С‡РёС‚Р°РµС‚ РѕРєРЅРѕ С‡РµСЂРµР· ai_generate.run_generation:
-    INFO <С‚РµРєСЃС‚>         вЂ” С‡С‚Рѕ РїСЂРѕРёСЃС…РѕРґРёС‚
-    FRAME <i>/<n> ...    вЂ” РЅР°С‡Р°Р»Рё РєР°РґСЂ
-    PROGRESS <i>/<n> С€Р°Рі <s>/<steps>
-    SAVED <РїСѓС‚СЊ>         вЂ” РєР°РґСЂ СЃРѕС…СЂР°РЅС‘РЅ
-    DONE <СЃРєРѕР»СЊРєРѕ>
-    ERROR <С‚РµРєСЃС‚>        вЂ” Рё РґР°Р»СЊС€Рµ traceback РІ stdout
+Строки, которые читает окно через ai_generate.run_generation:
+    INFO <текст>         — что происходит
+    FRAME <i>/<n> ...    — начали кадр
+    PROGRESS <i>/<n> шаг <s>/<steps>
+    SAVED <путь>         — кадр сохранён
+    DONE <сколько>
+    ERROR <текст>        — и дальше traceback в stdout
 
-РџСЂРѕ С„РѕРЅ: kohya РїСЂРё РѕР±СѓС‡РµРЅРёРё РІРёРґРµР»Р° РїСЂРѕР·СЂР°С‡РЅРѕСЃС‚СЊ РєР°Рє Р§РЃР РќР«Р™ (RGB РїРѕРґ Р°Р»СЊС„РѕР№ =
-0,0,0 вЂ” РїСЂРѕРІРµСЂРµРЅРѕ РЅР° export_final/man18/*.png). РџРѕСЌС‚РѕРјСѓ РјРѕРґРµР»СЊ СЂРёСЃСѓРµС‚ СЃРїСЂР°Р№С‚ РЅР°
-С‡С‘СЂРЅРѕРј. Р’С‹СЂРµР·Р°РЅРёРµ С„РѕРЅР° РґРµР»Р°РµС‚ ai_generate.py РЅР° СЃРёСЃС‚РµРјРЅРѕРј Python, РіРґРµ РµСЃС‚СЊ PIL.
+Про фон: kohya при обучении видела прозрачность как ЧЁРНЫЙ (RGB под альфой =
+0,0,0 — проверено на export_final/man18/*.png). Поэтому модель рисует спрайт на
+чёрном. Вырезание фона делает ai_generate.py на системном Python, где есть PIL.
 """
 
 import argparse
@@ -53,17 +53,17 @@ def log(kind, msg):
 
 
 def find_original_config(kohya_root):
-    """YAML-РєРѕРЅС„РёРі SD 1.5 РёР· kohya вЂ” attention-РєРѕРЅС„РёРі РґР»СЏ from_single_file.
+    """"YAML-конфиг SD 1.5 из kohya — attention-конфиг для from_single_file.
 
-    Р’РђР–РќРћ: СЌС‚РѕС‚ yaml СЂРµС€Р°РµС‚ РўРћР›Р¬РљРћ Р±Р»РѕРєРё attention. РљРѕРЅС„РёРі Р°СЂС…РёС‚РµРєС‚СѓСЂС‹
-    (model_index.json, unet/vae) Рё СЃР»РѕРІР°СЂСЊ С‚РѕРєРµРЅРёР·Р°С‚РѕСЂР° diffusers Р±РµСЂС‘С‚
-    РћРўР”Р•Р›Р¬РќРћ РёР· РєСЌС€Р° HuggingFace вЂ” СЃРј. find_sd_config_cache. РћРґРЅРѕРіРѕ yaml РґР»СЏ
-    РѕС„Р»Р°Р№РЅР° РЅРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ; РёРјРµРЅРЅРѕ РЅР° СЌС‚РѕРј Рё РїР°РґР°Р» РїРµСЂРІС‹Р№ Р·Р°РїСѓСЃРє.
+    ВАЖНО: этот yaml решает ТОЛЬКО блоки attention. Конфиг архитектуры
+    (model_index.json, unet/vae) и словарь токенизатора diffusers берёт
+    ОТДЕЛЬНО из кэша HuggingFace — см. find_sd_config_cache. Одного yaml для
+    офлайна недостаточно; именно на этом и падал первый запуск.
     """
     if not kohya_root:
         return None
     names = ("v1-inference.yaml", "v2-inference-v.yaml")
-    # РёР·РІРµСЃС‚РЅС‹Рµ СЂР°СЃРєР»Р°РґРєРё kohya + Р·Р°РїР°СЃРЅРѕР№ РѕР±С…РѕРґ: С„Р°Р№Р» РєРѕС‡СѓРµС‚ РјРµР¶РґСѓ РІРµСЂСЃРёСЏРјРё
+    # известные раскладки kohya + запасной обход: файл кочует между версиями
     for cand in [os.path.join(kohya_root, "sd-scripts", "configs", n) for n in names] + \
                 [os.path.join(kohya_root, "configs", n) for n in names] + \
                 [os.path.join(kohya_root, "configs", "stable-diffusion", n) for n in names]:
@@ -81,7 +81,7 @@ def find_original_config(kohya_root):
 
 
 def hf_cache_roots():
-    """Р’РѕР·РјРѕР¶РЅС‹Рµ РїР°РїРєРё РєСЌС€Р° HuggingFace (HF_HOME, ~/.cache, Windows AppData)."""
+    """Возможные папки кэша HuggingFace (HF_HOME, ~/.cache, Windows AppData)."""
     roots = []
     if os.environ.get("HF_HOME"):
         roots += [os.path.join(os.environ["HF_HOME"], "hub"), os.environ["HF_HOME"]]
@@ -93,7 +93,7 @@ def hf_cache_roots():
 
 
 def _find_snapshot(repo_slug, need_file):
-    """РЎРЅРёРјРѕРє СЂРµРїРѕР·РёС‚РѕСЂРёСЏ РІ РєСЌС€Рµ HF, РіРґРµ РµСЃС‚СЊ С„Р°Р№Р» need_file."""
+    """Снимок репозитория в кэше HF, где есть файл need_file."""
     for root in hf_cache_roots():
         snaps = os.path.join(root, "models--" + repo_slug, "snapshots")
         if not os.path.isdir(snaps):
@@ -106,21 +106,21 @@ def _find_snapshot(repo_slug, need_file):
 
 
 def find_sd_config_cache(repo="stable-diffusion-v1-5--stable-diffusion-v1-5"):
-    """Р•СЃС‚СЊ Р»Рё РІ РєСЌС€Рµ HF РєРѕРЅС„РёРіРё SD 1.5 (model_index.json), РєРѕС‚РѕСЂС‹Рµ С‚СЏРЅРµС‚
-    from_single_file. Р‘РµР· РЅРёС… РїСЂРё РїРµСЂРІРѕРј Р·Р°РїСѓСЃРєРµ РёРґС‘С‚ СЃРєР°С‡РёРІР°РЅРёРµ СЃ HF."""
+    """Есть ли в кэше HF конфиги SD 1.5 (model_index.json), которые тянет
+    from_single_file. Без них при первом запуске идёт скачивание с HF."""
     return _find_snapshot(repo, "model_index.json")
 
 
 def find_clip_tokenizer():
-    """РўРѕРєРµРЅРёР·Р°С‚РѕСЂ CLIP РІ РєСЌС€Рµ HF вЂ” РѕС‚РґРµР»СЊРЅС‹Р№ РѕС‚ РєРѕРЅС„РёРіР° Р°СЂС…РёС‚РµРєС‚СѓСЂС‹."""
+    """Токенизатор CLIP в кэше HF — отдельный от конфига архитектуры."""
     return _find_snapshot("openai--clip-vit-large-patch14", "tokenizer_config.json")
 
 
 def selftest():
-    """РЎР°РјРѕРїСЂРѕРІРµСЂРєР° РѕРєСЂСѓР¶РµРЅРёСЏ Р±РµР· Р·Р°РіСЂСѓР·РєРё РјРѕРґРµР»Рё.
+    """Самопроверка окружения без загрузки модели.
 
-    РџРµС‡Р°С‚Р°РµС‚ С‚Рѕ, С‡С‚Рѕ РІР°Р¶РЅРѕ Р·РЅР°С‚СЊ РґРѕ РіРµРЅРµСЂР°С†РёРё: РµСЃС‚СЊ Р»Рё torch/diffusers, РІРёРґРЅР°
-    Р»Рё РІРёРґРµРѕРєР°СЂС‚Р°, РЅР°Р№РґС‘С‚СЃСЏ Р»Рё РєРѕРЅС„РёРі Рё С‚РѕРєРµРЅРёР·Р°С‚РѕСЂ РѕС„С„Р»Р°Р№РЅ.
+    Печатает то, что важно знать до генерации: есть ли torch/diffusers, видна
+    ли видеокарта, найдётся ли конфиг и токенизатор оффлайн.
     """
     rc = 0
     has_cuda = True
@@ -128,58 +128,58 @@ def selftest():
         import torch
         log("INFO", f"torch {torch.__version__}")
         if torch.cuda.is_available():
-            log("INFO", f"CUDA: РґР°, {torch.cuda.get_device_name(0)}")
+            log("INFO", f"CUDA: да, {torch.cuda.get_device_name(0)}")
             try:
                 free, total = torch.cuda.mem_get_info()
-                log("INFO", f"РІРёРґРµРѕРїР°РјСЏС‚СЊ: {total / 1024 ** 3:.1f} Р“Р‘, "
-                            f"СЃРІРѕР±РѕРґРЅРѕ {free / 1024 ** 3:.1f} Р“Р‘")
+                log("INFO", f"видеопамять: {total / 1024 ** 3:.1f} ГБ, "
+                            f"свободно {free / 1024 ** 3:.1f} ГБ")
             except Exception:
                 pass
         else:
-            # РЅРµ РѕС€РёР±РєР° Р·Р°РїСѓСЃРєР°, РЅРѕ Рё РЅРµ В«РІСЃС‘ С…РѕСЂРѕС€РѕВ»: РїРёС€РµРј РїСЂСЏРјРѕ, С‡С‚Рѕ СЌС‚Рѕ Р·РЅР°С‡РёС‚
-            log("INFO", "CUDA: РќР•Рў вЂ” РіРµРЅРµСЂР°С†РёСЏ РїРѕР№РґС‘С‚ РЅР° РїСЂРѕС†РµСЃСЃРѕСЂРµ, СЌС‚Рѕ РѕС‡РµРЅСЊ РјРµРґР»РµРЅРЅРѕ")
+            # не ошибка запуска, но и не «всё хорошо»: пишем прямо, что это значит
+            log("INFO", "CUDA: НЕТ — генерация пойдёт на процессоре, это очень медленно")
             has_cuda = False
     except Exception as e:
-        log("ERROR", f"torch РЅРµ РёРјРїРѕСЂС‚РёСЂСѓРµС‚СЃСЏ: {e}")
+        log("ERROR", f"torch не импортируется: {e}")
         return 2
 
     try:
         import diffusers
         log("INFO", f"diffusers {diffusers.__version__}")
     except Exception as e:
-        log("ERROR", f"diffusers РЅРµ РёРјРїРѕСЂС‚РёСЂСѓРµС‚СЃСЏ: {e}")
+        log("ERROR", f"diffusers не импортируется:  {e}")
         return 2
 
     cfg = find_original_config(os.environ.get("ISKRA_KOHYA_ROOT", ""))
-    log("INFO", f"yaml attention-РєРѕРЅС„РёРі: {cfg or 'РЅРµ РЅР°Р№РґРµРЅ (diffusers СЃР°Рј РїРѕРґСЃС‚Р°РІРёС‚ SD 1.5)'}")
+    log("INFO", f"yaml attention-конфиг: {cfg or 'не найден (diffusers сам подставит SD 1.5)'}")
 
-    # РІРѕС‚ С‡С‚Рѕ СЂРµР°Р»СЊРЅРѕ Р±Р»РѕРєРёСЂРѕРІР°Р»Рѕ РїРµСЂРІС‹Р№ Р·Р°РїСѓСЃРє: РєРѕРЅС„РёРіРё Р°СЂС…РёС‚РµРєС‚СѓСЂС‹ SD
+    # вот что реально блокировало первый запуск: конфиги архитектуры SD
     cached = find_sd_config_cache()
     tok = find_clip_tokenizer()
     if cached:
-        log("INFO", "РєРѕРЅС„РёРіРё SD 1.5 РІ РєСЌС€Рµ HF: Р•РЎРўР¬ вЂ” РёРЅС‚РµСЂРЅРµС‚ РґР»СЏ Р·Р°РїСѓСЃРєР° РЅРµ РЅСѓР¶РµРЅ")
+        log("INFO", "конфиги SD 1.5 в кэше HF: ЕСТЬ — интернет для запуска не нужен")
     else:
-        log("INFO", "РєРѕРЅС„РёРіРё SD 1.5 РІ РєСЌС€Рµ HF: РќР•Рў вЂ” РїРµСЂРІС‹Р№ Р·Р°РїСѓСЃРє СЃРєР°С‡Р°РµС‚ РёС… СЃ "
-                    "HuggingFace, РЅСѓР¶РµРЅ РёРЅС‚РµСЂРЅРµС‚.")
-        log("INFO", "РЎРєР°С‡РёРІР°РµС‚СЃСЏ С‚РѕР»СЊРєРѕ РєРѕРЅС„РёРі (РЅРµСЃРєРѕР»СЊРєРѕ РњР‘), РЅРµ 2 Р“Р‘ РІРµСЃРѕРІ; "
-                    "РґР°Р»СЊС€Рµ РІСЃС‘ Р±РµСЂС‘С‚СЃСЏ РёР· РєСЌС€Р° РѕС„Р»Р°Р№РЅ.")
-    log("INFO", "С‚РѕРєРµРЅРёР·Р°С‚РѕСЂ CLIP: " +
-        ("РµСЃС‚СЊ РІ РєСЌС€Рµ" if tok else "РЅРµС‚ вЂ” СЃРєР°С‡Р°РµС‚СЃСЏ РїСЂРё РїРµСЂРІРѕРј Р·Р°РїСѓСЃРєРµ"))
+        log("INFO", "конфиги SD 1.5 в кэше HF: НЕТ — первый запуск скачает их с "
+                    "HuggingFace, нужен интернет.")
+        log("INFO", "Скачивается только конфиг (несколько МБ), не 2 ГБ весов; "
+                    "дальше всё берётся из кэша офлайн.")
+    log("INFO", "токенизатор CLIP: " +
+        ("есть в кэше" if tok else "нет — скачается при первом запуске"))
 
-    # peft РЅСѓР¶РµРЅ С‚РѕР»СЊРєРѕ РґР»СЏ СЃРѕРІСЂРµРјРµРЅРЅРѕРіРѕ РїСѓС‚Рё; Р±РµР· РЅРµРіРѕ СЂР°Р±РѕС‚Р°РµС‚ СЂСѓС‡РЅРѕРµ РЅР°Р»РѕР¶РµРЅРёРµ
+    # peft нужен только для современного пути; без него работает ручное наложение    
     try:
         import peft  # noqa: F401
-        log("INFO", "peft: РµСЃС‚СЊ вЂ” LoRA РїРѕРґРєР»СЋС‡РёС‚СЃСЏ С€С‚Р°С‚РЅРѕ")
+        log("INFO", "peft: есть — LoRA подключится штатно")
     except Exception:
-        log("INFO", "peft: РЅРµС‚ вЂ” LoRA РїРѕРґРєР»СЋС‡РёС‚СЃСЏ РІСЂСѓС‡РЅСѓСЋ (СЌС‚Рѕ РЅРѕСЂРјР°Р»СЊРЅРѕ)")
+        log("INFO", "peft: нет — LoRA подключится вручную (это нормально)")
 
     if not has_cuda:
-        log("INFO", "РРўРћР“: РґРІРёР¶РѕРє СЂР°Р±РѕС‡РёР№, РЅРѕ Р±РµР· CUDA РіРµРЅРµСЂР°С†РёСЏ Р±СѓРґРµС‚ РѕС‡РµРЅСЊ РјРµРґР»РµРЅРЅРѕР№")
+        log("INFO", "ИТОГ: движок рабочий, но без CUDA генерация будет очень медленной")
     return rc
 
 
 def _load_lora_state(path):
-    """Р§РёС‚Р°РµС‚ .safetensors РІРµСЃР°. РћС‚РґРµР»СЊРЅР°СЏ С„СѓРЅРєС†РёСЏ вЂ” РµС‘ РїРѕРґРјРµРЅСЏСЋС‚ РІ С‚РµСЃС‚Р°С…."""
+    """Читает .safetensors веса. Отдельная функция — её подменяют в тестах."""
     from safetensors.torch import load_file
     return load_file(path)
 
@@ -189,45 +189,45 @@ _TEST_LORA_STUB = None
 
 def apply_lora_manually(module, lora_path, scale=1.0, prefix="lora_unet_",
                         state=None):
-    """РќР°РєР»Р°РґС‹РІР°РµС‚ LoRA РЅР° РјРѕРґСѓР»СЊ Р±РµР· peft вЂ” СЂСѓРєР°РјРё, РїРѕ РѕРїСЂРµРґРµР»РµРЅРёСЋ.
+    """Накладывает LoRA на модуль без peft — руками, по определению.
 
-    Р—Р°С‡РµРј: РІ venv kohya РїР°РєРµС‚ peft РЅРµ СѓСЃС‚Р°РЅРѕРІР»РµРЅ, Р° load_lora_weights РІ
-    diffusers 0.32 С‚СЂРµР±СѓРµС‚ РµРіРѕ Р±РµР·СѓСЃР»РѕРІРЅРѕ ("PEFT backend is required").
-    Р¤РѕСЂРјР°С‚ kohya РїР»РѕСЃРєРёР№ Рё РґРѕРєСѓРјРµРЅС‚РёСЂРѕРІР°РЅРЅС‹Р№:
+    Зачем: в venv kohya пакет peft не установлен, а load_lora_weights в
+    diffusers 0.32 требует его безусловно ("PEFT backend is required").
+    Формат kohya плоский и документированный:
 
-        lora_unet_<РјРѕРґСѓР»СЊ>.lora_down.weight   (r, in)
-        lora_unet_<РјРѕРґСѓР»СЊ>.lora_up.weight     (out, r)
-        lora_unet_<РјРѕРґСѓР»СЊ>.alpha              (СЃРєР°Р»СЏСЂ; РёРЅР°С‡Рµ alpha = r)
+        lora_unet_<модуль>.lora_down.weight   (r, in)
+        lora_unet_<модуль>.lora_up.weight     (out, r)
+        lora_unet_<модуль>.alpha              (скаляр; иначе alpha = r)
 
-    Р­С„С„РµРєС‚ С‚РѕС‚ Р¶Рµ, С‡С‚Рѕ Сѓ peft: W += scale * alpha/r * (up @ down).
+    Эффект тот же, что у peft: W += scale * alpha/r * (up @ down).
 
-    :param module: UNet РёР»Рё text_encoder РёР· РїР°Р№РїР»Р°Р№РЅР°
-    :param lora_path: РїСѓС‚СЊ Рє .safetensors РѕС‚ kohya
-    :param scale: СЃРёР»Р° LoRA
-    :param prefix: "lora_unet_" РґР»СЏ UNet, "lora_te_" РґР»СЏ С‚РµРєСЃС‚РѕРІРѕРіРѕ СЌРЅРєРѕРґРµСЂР°
-    :param state: СѓР¶Рµ РїСЂРѕС‡РёС‚Р°РЅРЅС‹Рµ РІРµСЃР° (С‡С‚РѕР±С‹ РЅРµ С‡РёС‚Р°С‚СЊ С„Р°Р№Р» РґРІР°Р¶РґС‹)
-    :return: С‡РёСЃР»Рѕ РЅР°Р»РѕР¶РµРЅРЅС‹С… СЃР»РѕС‘РІ; 0 вЂ” С„РѕСЂРјР°С‚ РЅРµ СЂР°СЃРїРѕР·РЅР°РЅ
+    :param module: UNet или text_encoder из пайплайна
+    :param lora_path: путь к .safetensors от kohya
+    :param scale: сила LoRA
+    :param prefix: "lora_unet_" для UNet, "lora_te_" для текстового энкодера
+    :param state: уже прочитанные веса (чтобы не читать файл дважды)
+    :return: число наложенных слоёв; 0 — формат не распознан
     """
     import torch
 
     sd = state if state is not None else _load_lora_state(lora_path)
     keys = list(sd.keys())
 
-    # РїСЂРµС„РёРєСЃ РЅРµ СѓРіР°РґС‹РІР°РµРј: Сѓ kohya СЌС‚Рѕ lora_unet_/lora_te_, РЅРѕ Р±С‹РІР°СЋС‚
-    # РІС‹РіСЂСѓР·РєРё Р±РµР· РїСЂРµС„РёРєСЃР°. Р‘РµСЂС‘Рј С‚РѕС‚, РїРѕРґ РєРѕС‚РѕСЂС‹Рј СЂРµР°Р»СЊРЅРѕ РµСЃС‚СЊ lora_down.
+    # префикс не угадываем: у kohya это lora_unet_/lora_te_, но бывают
+    # выгрузки без префикса. Берём тот, под которым реально есть lora_down.
     if not any(k.startswith(prefix) for k in keys):
         prefix = ""
         if not any(".lora_down.weight" in k for k in keys):
             return 0
 
-    # РёРјРµРЅР° РјРѕРґСѓР»РµР№ diffusers РїРёС€СѓС‚СЃСЏ С‡РµСЂРµР· С‚РѕС‡РєРё (down_blocks.0.attentions),
-    # kohya РєРѕРґРёСЂСѓРµС‚ РёС… РїРѕРґС‡С‘СЂРєРёРІР°РЅРёСЏРјРё, РїРѕСЌС‚РѕРјСѓ СЃРІРµСЂСЏРµРј РЅРѕСЂРјР°Р»РёР·РѕРІР°РЅРЅС‹Рµ РёРјРµРЅР°
+    # имена модулей diffusers пишутся через точки (down_blocks.0.attentions),
+    # kohya кодирует их подчёркиваниями, поэтому сверяем нормализованные имена
     mods = {}
     for name, m in module.named_modules():
         if hasattr(m, "weight"):
             mods[name.replace(".", "_")] = m
 
-    # Сѓ РєР»СЋС‡Р° РґРІР° В«С…РІРѕСЃС‚Р°В»: <РјРѕРґСѓР»СЊ>.lora_down.weight | .lora_up.weight | .alpha
+    # у ключа два «хвоста»: <модуль>.lora_down.weight | .lora_up.weight | .alpha
     suffixes = (".lora_down.weight", ".lora_up.weight", ".alpha")
     groups = {}
     for key in keys:
@@ -240,8 +240,8 @@ def apply_lora_manually(module, lora_path, scale=1.0, prefix="lora_unet_",
                 break
 
     applied = 0
-    skipped = 0          # СЃР»РѕС‘РІ, РіРґРµ С‡С‚Рѕ-С‚Рѕ РЅРµ СЃРѕРІРїР°Р»Рѕ вЂ” СЃС‡РёС‚Р°РµРј, РЅРѕ РЅРµ СЂРѕРЅСЏРµРј
-    first_err = None     # РїРѕРєР°Р¶РµРј РїСЂРёС‡РёРЅСѓ СЂРѕРІРЅРѕ РѕРґРёРЅ СЂР°Р·, Р° РЅРµ 72 СЂР°Р·Р°
+    skipped = 0          # слоёв, где что-то не совпало — считаем, но не роняем
+    first_err = None     # покажем причину ровно один раз, а не 72 раза
 
     for base, part in groups.items():
         target = mods.get(base)
@@ -254,11 +254,11 @@ def apply_lora_manually(module, lora_path, scale=1.0, prefix="lora_unet_",
             skipped += 1
             continue
         try:
-            # Kohya РїРёС€РµС‚ РґРІР° С„РѕСЂРјР°С‚Р°:
-            #   Р»РёРЅРµР№РЅС‹Р№ LoRA:  down (r,in)      up (out,r)
+            # Kohya пишет два формата:
+            #   линейный LoRA:  down (r,in)      up (out,r)
             #   conv-LoRA/LoCon: down (r,in,kh,kw) up (out,r,1,1)
-            # torch.mm РїСЂРёРЅРёРјР°РµС‚ С‚РѕР»СЊРєРѕ 2D, РїРѕСЌС‚РѕРјСѓ СЃРІРѕСЂР°С‡РёРІР°РµРј С…РІРѕСЃС‚ СЂР°Р·РјРµСЂРЅРѕСЃС‚РµР№
-            # РІ РїР»РѕСЃРєРѕСЃС‚СЊ (РєР°Рє СЌС‚Рѕ РґРµР»Р°РµС‚ Рё СЃР°Рј peft), Р° РїРѕС‚РѕРј РІРѕР·РІСЂР°С‰Р°РµРј С„РѕСЂРјСѓ.
+            # torch.mm принимает только 2D, поэтому сворачиваем хвост размерностей
+            # в плоскость (как это делает и сам peft), а потом возвращаем форму.
             dshape, ushape = tuple(down.shape), tuple(up.shape)
             r = dshape[0]
             if len(dshape) > 2:                 # conv-LoRA
@@ -273,14 +273,14 @@ def apply_lora_manually(module, lora_path, scale=1.0, prefix="lora_unet_",
             w = target.weight
             want = tuple(w.shape)
             if tuple(delta.shape) != want:
-                # conv-СЃР»РѕР№: delta РїР»РѕСЃРєР°СЏ, РІРµСЃ 4D вЂ” РїСЂРёРІРѕРґРёРј С„РѕСЂРјСѓ
+                # conv-слой: delta плоская, вес 4D — приводим форму
                 if len(want) >= 2 and delta.numel() == _numel(want):
                     delta = delta.reshape(*want)
                 else:
                     skipped += 1
                     continue
-            # СЃРєР»Р°РґС‹РІР°РµРј РІ float32 Рё С‚РѕР»СЊРєРѕ РїРѕС‚РѕРј РІРѕР·РІСЂР°С‰Р°РµРј dtype РІРµСЃР°: РЅР° fp16
-            # РїСЂСЏРјРѕРµ СЃР»РѕР¶РµРЅРёРµ С‚РµСЂСЏРµС‚ РјР»Р°РґС€РёРµ СЂР°Р·СЂСЏРґС‹, Рё Р·Р° 24 С€Р°РіР° СЌС‚Рѕ Р·Р°РјРµС‚РЅРѕ
+            # складываем в float32 и только потом возвращаем dtype веса: на fp16
+            # прямое сложение теряет младшие разряды, и за 24 шага это заметно
             w.data = (w.data.float() + delta).to(dtype=w.dtype, device=w.device)
             applied += 1
         except Exception as e:
@@ -298,13 +298,13 @@ def _numel(shape):
 
 
 def apply_lora_all(pipe, lora_path, scale=1.0):
-    """РќР°РєР»Р°РґС‹РІР°РµС‚ LoRA РЅР° UNet Рё РЅР° С‚РµРєСЃС‚РѕРІС‹Р№ СЌРЅРєРѕРґРµСЂ.
+    """Накладывает LoRA на UNet и на текстовый энкодер.
 
-    РўРµРєСЃС‚РѕРІР°СЏ С‡Р°СЃС‚СЊ РІР°Р¶РЅР° РЅРµ РјРµРЅСЊС€Рµ: РёРјРµРЅРЅРѕ РѕРЅР° РѕС‚РІРµС‡Р°РµС‚ Р·Р° С‚Рѕ, РЅР°СЃРєРѕР»СЊРєРѕ
-    С‚СЂРёРіРіРµСЂ-СЃР»РѕРІРѕ В«СѓР·РЅР°С‘С‚В» РїРµСЂСЃРѕРЅР°Р¶Р°. Р‘РµР· РЅРµС‘ РєР°РґСЂС‹ РїРѕС…РѕР¶Рё РЅР° СЂРµС„РµСЂРµРЅСЃ, РЅРѕ
-    РїРµСЂСЃРѕРЅР°Р¶ В«РїР»С‹РІС‘С‚В». Р¤Р°Р№Р» С‡РёС‚Р°РµС‚СЃСЏ РѕРґРёРЅ СЂР°Р· РЅР° РѕР±Р° РјРѕРґСѓР»СЏ.
+    Текстовая часть важна не меньше: именно она отвечает за то, насколько
+    триггер-слово «узнаёт» персонажа. Без неё кадры похожи на референс, но
+    персонаж «плывёт». Файл читается один раз на оба модуля.
 
-    :return: (СЃР»РѕС‘РІ_unet, СЃР»РѕС‘РІ_te, РїСЂРѕРїСѓС‰РµРЅРѕ_РІСЃРµРіРѕ, РїРµСЂРІР°СЏ_РѕС€РёР±РєР°)
+    :return: (слоёв_unet, слоёв_te, пропущено_всего, первая_ошибка)
     """
     state = _load_lora_state(lora_path)
     n_unet, sk_unet, err1 = apply_lora_manually(pipe.unet, lora_path, scale,
@@ -318,12 +318,12 @@ def apply_lora_all(pipe, lora_path, scale=1.0):
                 text_encoder, lora_path, scale, prefix="lora_te_", state=state)
         except Exception as e:
             err2 = f"{type(e).__name__}: {e}"
-            log("INFO", f"С‚РµРєСЃС‚РѕРІС‹Р№ СЌРЅРєРѕРґРµСЂ РїСЂРѕРїСѓС‰РµРЅ: {err2}")
+            log("INFO", f"текстовый энкодер пропущен: {err2}")
     return n_unet, n_te, sk_unet + sk_te, (err1 or err2)
 
 
 def build_pipeline(job, torch):
-    """РЎРѕР±РёСЂР°РµС‚ РїР°Р№РїР»Р°Р№РЅ РѕРґРёРЅ СЂР°Р·. Р’РѕР·РІСЂР°С‰Р°РµС‚ (pipe, mode)."""
+    """Собирает пайплайн один раз. Возвращает (pipe, mode)."""
     from diffusers import StableDiffusionImg2ImgPipeline, StableDiffusionPipeline
 
     dtype = torch.float16 if torch.cuda.is_available() else torch.float32
@@ -335,10 +335,10 @@ def build_pipeline(job, torch):
         kwargs["original_config_file"] = cfg
         log("INFO", f"original_config: {cfg}")
     else:
-        log("INFO", "original_config РЅРµ РЅР°Р№РґРµРЅ вЂ” diffusers РјРѕР¶РµС‚ РѕР±СЂР°С‚РёС‚СЊСЃСЏ Рє HF")
+        log("INFO", "original_config не найден — diffusers может обратиться к HF")
 
     model = job["model"]
-    log("INFO", f"Р·Р°РіСЂСѓР·РєР° РјРѕРґРµР»Рё: {model}")
+    log("INFO", f"загрузка модели: {model}")
     if job.get("init"):
         pipe = StableDiffusionImg2ImgPipeline.from_single_file(model, **kwargs)
         mode = "img2img"
@@ -347,7 +347,7 @@ def build_pipeline(job, torch):
         mode = "txt2img"
 
     try:
-        pipe.enable_attention_slicing()   # 8 Р“Р‘: Р±РµР· СЌС‚РѕРіРѕ 512x512+LoRA РјРѕР¶РµС‚ РЅРµ РІР»РµР·С‚СЊ
+        pipe.enable_attention_slicing()   # 8 ГБ: без этого 512x512+LoRA может не влезть
     except Exception:
         pass
 
@@ -356,7 +356,7 @@ def build_pipeline(job, torch):
         log("INFO", f"LoRA: {lora}")
         scale = float(job.get("lora_scale", 1.0))
         done = False
-        # 1) СЃРѕРІСЂРµРјРµРЅРЅС‹Р№ РїСѓС‚СЊ: peft РІРЅСѓС‚СЂРё diffusers
+        # 1) современный путь: peft внутри diffusers
         try:
             pipe.load_lora_weights(
                 os.path.dirname(os.path.abspath(lora)) or ".",
@@ -367,100 +367,100 @@ def build_pipeline(job, torch):
                 pipe.set_adapters(["char"], adapter_weights=[scale])
             except Exception:
                 pass
-            log("INFO", "LoRA РїРѕРґРєР»СЋС‡РµРЅР° (load_lora_weights)")
+            log("INFO", "LoRA подключена (load_lora_weights)")
             done = True
         except Exception as e:
-            log("INFO", f"load_lora_weights РЅРµРґРѕСЃС‚СѓРїРµРЅ: {type(e).__name__}: {e}")
+            log("INFO", f"load_lora_weights недоступен: {type(e).__name__}: {e}")
 
-        # 2) Р±РµР· peft вЂ” РЅР°РєР»Р°РґС‹РІР°РµРј РІРµСЃР° РЅР° UNet РІСЂСѓС‡РЅСѓСЋ (С„РѕСЂРјР°С‚ kohya)
+        # 2) без peft — накладываем веса на UNet вручную (формат kohya)
         if not done:
             try:
                 n_unet, n_te, n_skip, err = apply_lora_all(pipe, lora, scale)
             except Exception as e:
                 n_unet = n_te = n_skip = 0
                 err = f"{type(e).__name__}: {e}"
-                log("ERROR", f"СЂСѓС‡РЅРѕРµ РЅР°Р»РѕР¶РµРЅРёРµ LoRA СѓРїР°Р»Рѕ РїРѕР»РЅРѕСЃС‚СЊСЋ: {err}")
+                log("ERROR", f"ручное наложение LoRA упало полностью: {err}")
             if n_unet:
-                msg = (f"LoRA РїРѕРґРєР»СЋС‡РµРЅР° РІСЂСѓС‡РЅСѓСЋ (peft РЅРµ РЅСѓР¶РµРЅ): "
-                       f"UNet {n_unet} СЃР»РѕС‘РІ, С‚РµРєСЃС‚ {n_te}, СЃРёР»Р° {scale}")
+                msg = (f"LoRA подключена вручную (peft не нужен): "
+                       f"UNet {n_unet} слоёв, текст {n_te}, сила {scale}")
                 if n_skip:
-                    msg += f" | РїСЂРѕРїСѓС‰РµРЅРѕ {n_skip} (С„РѕСЂРјР°С‚ СЃР»РѕС‘РІ)"
+                    msg += f" | пропущено {n_skip} (формат слоёв)"
                 log("INFO", msg)
                 if err:
-                    log("INFO", f"РїРµСЂРІР°СЏ РїСЂРѕРїСѓС‰РµРЅРЅР°СЏ РїСЂРёС‡РёРЅР°: {err}")
+                    log("INFO", f"первая пропущенная причина: {err}")
                 done = True
 
         if not done:
-            log("ERROR", "LoRA РЅРµ РїРѕРґРєР»СЋС‡РёР»Р°СЃСЊ РЅРё РѕРґРЅРёРј СЃРїРѕСЃРѕР±РѕРј вЂ” РєР°РґСЂС‹ РІС‹Р№РґСѓС‚ "
-                         "Р±РµР· РїРµСЂСЃРѕРЅР°Р¶Р°.")
-            log("INFO", "Р§С‚Рѕ РґРµР»Р°С‚СЊ: РїСЂРѕРІРµСЂСЊС‚Рµ, С‡С‚Рѕ С„Р°Р№Р» вЂ” LoRA РѕС‚ kohya "
-                        "(РІРЅСѓС‚СЂРё РєР»СЋС‡Рё lora_unet_...lora_down.weight), "
-                        "Р° РЅРµ РїРѕР»РЅР°СЏ РјРѕРґРµР»СЊ.")
+            log("ERROR", "LoRA не подключилась ни одним способом — кадры выйдут "
+                         "без персонажа.")
+            log("INFO", "Что делать: проверьте, что файл — LoRA от kohya "
+                        "(внутри ключи lora_unet_...lora_down.weight), "
+                        "а не полная модель.")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     pipe = pipe.to(device)
-    log("INFO", f"СѓСЃС‚СЂРѕР№СЃС‚РІРѕ: {device}, СЂРµР¶РёРј: {mode}")
+    log("INFO", f"устройство: {device}, режим: {mode}")
     return pipe, mode
 
 
 def explain_load_error(exc):
-    """РџРµСЂРµРІРѕРґРёС‚ РїР°РґРµРЅРёРµ Р·Р°РіСЂСѓР·РєРё РјРѕРґРµР»Рё РІ РєРѕСЂРѕС‚РєРёР№ С‡РµР»РѕРІРµС‡РµСЃРєРёР№ РґРёР°РіРЅРѕР·.
+    """Переводит падение загрузки модели в короткий человеческий диагноз.
 
-    Р§РµР»РѕРІРµРє РЅРµ РѕР±СЏР·Р°РЅ СЂР°Р·Р±РёСЂР°С‚СЊСЃСЏ РІ 70 СЃС‚СЂРѕРєР°С… С‚СЂРµР№СЃР±РµРєР° huggingface_hub:
-    С‡Р°СЃС‚С‹Рµ РїСЂРёС‡РёРЅС‹ РѕРїРѕР·РЅР°СЋС‚СЃСЏ РїРѕ С‚РµРєСЃС‚Сѓ Рё РѕР±СЉСЏСЃРЅСЏСЋС‚СЃСЏ СЃСЂР°Р·Сѓ СЃ Р»РµС‡РµРЅРёРµРј.
+    Человек не обязан разбираться в 70 строках трейсбека huggingface_hub:
+    частые причины опознаются по тексту и объясняются сразу с лечением.
     """
     low = (str(exc) + " " + traceback.format_exc()).lower()
-    log("ERROR", f"РЅРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РјРѕРґРµР»СЊ: {type(exc).__name__}")
+    log("ERROR", f"не удалось загрузить модель: {type(exc).__name__}")
 
     if "offlinemodeisenabled" in low or "offline mode is enabled" in low:
-        log("INFO", "РЎРµС‚СЊ Р·Р°РїСЂРµС‰РµРЅР°, Р° РєРѕРЅС„РёРіСѓСЂР°С†РёРё SD 1.5 РµС‰С‘ РЅРµ СЃРєР°С‡Р°РЅС‹ РІ РєСЌС€.")
-        log("INFO", "Р§С‚Рѕ РґРµР»Р°С‚СЊ: Р·Р°РїСѓСЃС‚РёС‚Рµ СЃ РІРєР»СЋС‡С‘РЅРЅС‹Рј РёРЅС‚РµСЂРЅРµС‚РѕРј РћР”РРќ СЂР°Р· вЂ” "
-                    "СЃРєР°С‡Р°РµС‚СЃСЏ С‚РѕР»СЊРєРѕ РєРѕРЅС„РёРі (РЅРµСЃРєРѕР»СЊРєРѕ РњР‘, РЅРµ 2 Р“Р‘ РІРµСЃРѕРІ). "
-                    "Р”Р°Р»СЊС€Рµ РєСЌС€ РµСЃС‚СЊ, Рё СЂР°Р±РѕС‚Р°РµС‚ РѕС„Р»Р°Р№РЅ.")
+        log("INFO", "Сеть запрещена, а конфигурации SD 1.5 ещё не скачаны в кэш.")
+        log("INFO", "Что делать: запустите с включённым интернетом ОДИН раз — "
+                    "скачается только конфиг (несколько МБ, не 2 ГБ весов). "
+                    "Дальше кэш есть, и работает офлайн.")
     elif "localentrynotfound" in low or "cannot find an appropriate cached snapshot" in low:
-        log("INFO", "РљРѕРЅС„РёРіСѓСЂР°С†РёСЏ SD РЅРµ РЅР°Р№РґРµРЅР° РЅРё РІ РєСЌС€Рµ, РЅРё РІ СЃРµС‚Рё.")
-        log("INFO", "Р§С‚Рѕ РґРµР»Р°С‚СЊ: РІРєР»СЋС‡РёС‚Рµ РёРЅС‚РµСЂРЅРµС‚ РЅР° РѕРґРёРЅ Р·Р°РїСѓСЃРє.")
+        log("INFO", "Конфигурация SD не найдена ни в кэше, ни в сети.")
+        log("INFO", "Что делать: включите интернет на один запуск.")
     elif "out of memory" in low or "cublas_status_alloc" in low:
-        log("INFO", "РќРµ С…РІР°С‚РёР»Рѕ РІРёРґРµРѕРїР°РјСЏС‚Рё.")
-        log("INFO", "Р§С‚Рѕ РґРµР»Р°С‚СЊ: СѓРјРµРЅСЊС€РёС‚Рµ СЂР°Р·СЂРµС€РµРЅРёРµ РґРѕ 384x384.")
+        log("INFO", "Не хватило видеопамяти.")
+        log("INFO", "Что делать: уменьшите разрешение до 384x384.")
     elif "cannot find an appropriate format" in low or "unexpected key" in low \
             or "not a valid" in low:
-        log("INFO", "Р¤Р°Р№Р» РјРѕРґРµР»Рё РЅРµ С‡РёС‚Р°РµС‚СЃСЏ РєР°Рє SD 1.5: РїСЂРѕРІРµСЂСЊС‚Рµ, С‡С‚Рѕ РІС‹Р±СЂР°РЅ "
-                    "РёРјРµРЅРЅРѕ dreamshaper_8.safetensors, Р° РЅРµ LoRA РёР»Рё VAE.")
+        log("INFO", "Файл модели не читается как SD 1.5: проверьте, что выбран "
+                    "именно dreamshaper_8.safetensors, а не LoRA или VAE.")
     else:
         for line in (str(exc) + "\n" + traceback.format_exc()).strip().splitlines()[-5:]:
             log("INFO", "  " + line[:200])
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Р“РµРЅРµСЂР°С†РёСЏ РєР°РґСЂРѕРІ СЃРїСЂР°Р№С‚Р° (diffusers)")
-    ap.add_argument("--job", default="", help="JSON-С„Р°Р№Р» Р·Р°РґР°РЅРёСЏ")
+    ap = argparse.ArgumentParser(description="Генерация кадров спрайта (diffusers)")
+    ap.add_argument("--job", default="", help="JSON-файл задания")
     ap.add_argument("--selftest", action="store_true",
-                    help="С‚РѕР»СЊРєРѕ РїСЂРѕРІРµСЂРёС‚СЊ РѕРєСЂСѓР¶РµРЅРёРµ, РЅРёС‡РµРіРѕ РЅРµ РіРµРЅРµСЂРёСЂРѕРІР°С‚СЊ")
+                    help="только проверить окружение, ничего не генерировать")
     args = ap.parse_args()
 
     if args.selftest:
         return selftest()
     if not args.job:
-        log("ERROR", "РЅСѓР¶РµРЅ --job РёР»Рё --selftest")
+        log("ERROR", "нужен --job или --selftest")
         return 2
 
     try:
         with open(args.job, encoding="utf-8") as f:
             job = json.load(f)
     except Exception as e:
-        log("ERROR", f"РЅРµ С‡РёС‚Р°РµС‚СЃСЏ Р·Р°РґР°РЅРёРµ: {e}")
+        log("ERROR", f"не читается задание: {e}")
         return 2
 
     try:
         import torch
     except Exception as e:
-        log("ERROR", f"РІ СЌС‚РѕРј python РЅРµС‚ torch: {e}")
+        log("ERROR", f"в этом python нет torch: {e}")
         return 2
     try:
         import diffusers
     except Exception as e:
-        log("ERROR", f"РІ СЌС‚РѕРј python РЅРµС‚ diffusers: {e}")
+        log("ERROR", f"в этом python нет diffusers: {e}")
         return 2
 
     from PIL import Image
@@ -484,10 +484,10 @@ def main():
 
     init_img = None
     if job.get("init"):
-        # convert("RGB") РЅР° РєР°СЂС‚РёРЅРєРµ СЃ РїСЂРѕР·СЂР°С‡РЅРѕСЃС‚СЊСЋ РґР°С‘С‚ РїРѕРґ Р°Р»СЊС„РѕР№ СЂРѕРІРЅРѕ С‚Рѕ,
-        # С‡С‚Рѕ РІРёРґРµР»Р° kohya РїСЂРё РѕР±СѓС‡РµРЅРёРё (С‡С‘СЂРЅС‹Р№) вЂ” СЂРµС„РµСЂРµРЅСЃ Рё РѕР±СѓС‡РµРЅРёРµ СЃРѕРІРїР°РґР°СЋС‚
+        # convert("RGB") на картинке с прозрачностью даёт под альфой ровно то,
+        # что видела kohya при обучении (чёрный) — референс и обучение совпадают
         init_img = Image.open(job["init"]).convert("RGB").resize((W, H), Image.LANCZOS)
-        log("INFO", f"СЂРµС„РµСЂРµРЅСЃ: {job['init']} -> {W}x{H}")
+        log("INFO", f"референс: {job['init']} -> {W}x{H}")
 
     total = 0
     for task in job.get("tasks", []):
@@ -499,11 +499,11 @@ def main():
         s1 = task.get("strength_end")
         s1 = s0 if s1 is None else float(s1)
 
-        log("INFO", f"РєР»Р°СЃСЃ {prefix}: {count} РєР°РґСЂРѕРІ, prompt: {prompt}")
+        log("INFO", f"класс {prefix}: {count} кадров, prompt: {prompt}")
 
         for i in range(count):
-            # СЃРёР»Р° СЂР°СЃС‚С‘С‚ РѕС‚ РєР°РґСЂР° Рє РєР°РґСЂСѓ: РїРµСЂРІС‹Р№ Р±Р»РёР¶Рµ Рє СЂРµС„РµСЂРµРЅСЃСѓ, РїРѕСЃР»РµРґРЅРёР№
-            # СЃРІРѕР±РѕРґРЅРµРµ вЂ” РёРЅР°С‡Рµ РІСЃРµ РєР°РґСЂС‹ РІС‹Р№РґСѓС‚ РїРѕС‡С‚Рё РєРѕРїРёСЏРјРё РґСЂСѓРі РґСЂСѓРіР°
+            # сила растёт от кадра к кадру: первый ближе к референсу, последний
+            # свободнее — иначе все кадры выйдут почти копиями друг друга
             t = 0.0 if count == 1 else i / (count - 1)
             strength = s0 + (s1 - s0) * t
             seed = seed0 + i
@@ -512,7 +512,7 @@ def main():
 
             def cb(p, step, timestep, kw, _i=i, _p=prefix):
                 if step % 4 == 0:
-                    log("PROGRESS", f"{_i + 1}/{count} {_p} С€Р°Рі {step}/{steps}")
+                    log("PROGRESS", f"{_i + 1}/{count} {_p} шаг {step}/{steps}")
                 return kw
 
             gen = torch.Generator(device=device).manual_seed(seed)
@@ -527,7 +527,7 @@ def main():
                     params.update(width=W, height=H)
                 out = pipe(**params)
             except Exception:
-                log("ERROR", f"СЃР±РѕР№ РЅР° РєР°РґСЂРµ {i + 1} РєР»Р°СЃСЃР° {prefix}")
+                log("ERROR", f"сбой на кадре {i + 1} класса {prefix}")
                 print(traceback.format_exc(), flush=True)
                 return 4
 
