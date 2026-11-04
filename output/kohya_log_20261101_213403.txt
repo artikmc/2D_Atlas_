@@ -1,0 +1,259 @@
+﻿Обучение LoRA через kohya_ss.
+1) укажите базовую модель .safetensors (SD 1.5) и папку kohya_ss;
+2) «Проверить готовность» — покажет, чего не хватает;
+3) «Сохранить конфиг» — создаст .toml, его можно открыть и в GUI kohya;
+4) «Начать обучение» — запустит и покажет лог по строкам.
+
+
+— проверка готовности —
+  ОК: датасет — 1 персонаж(ей), 29 кадров
+  НЕТ: не найдена базовая модель (.safetensors SD 1.5)
+  НЕТ: папка kohya не указана или её нет
+  ОК: результаты пойдут в G:\Peton_programma\Rurik_2027\rurik_2027-6eccc4336a1e6f5be165488c1b22f5b834106ad7\output
+ИТОГ: не хватает 2 пункт(ов), см. НЕТ выше
+
+— проверка готовности —
+  ОК: датасет — 1 персонаж(ей), 29 кадров
+  ОК: базовая модель dreamshaper_8.safetensors (1.99 ГБ)
+  ОК: G:/kohya_ss\sd-scripts\train_network.py
+  ОК: python — G:/kohya_ss\venv\Scripts\python.exe
+  ОК: результаты пойдут в G:\Peton_programma\Rurik_2027\rurik_2027-6eccc4336a1e6f5be165488c1b22f5b834106ad7\output
+ИТОГ: можно начинать
+
+— проверка CUDA (несколько секунд) —
+  ОК: 2.7.0+cu128 / cuda True / NVIDIA GeForce RTX 3050
+
+— подготовка структуры train/ для kohya —
+  man18: 58 файлов -> 1_man18
+
+— запуск —
+  G:/kohya_ss\venv\Scripts\python.exe G:/kohya_ss\sd-scripts\train_network.py --config_file G:\Peton_programma\Rurik_2027\rurik_2027-6eccc4336a1e6f5be165488c1b22f5b834106ad7\output\train_config.toml
+
+  A matching Triton is not available, some optimizations will not be enabled
+  Traceback (most recent call last):
+    File "G:\kohya_ss\venv\lib\site-packages\xformers\__init__.py", line 57, in _is_triton_available
+      import triton  # noqa
+  ModuleNotFoundError: No module named 'triton'
+  2026-11-01 21:29:28.654264: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+  2026-11-01 21:29:34.358411: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+  2026-11-01 21:29:46 INFO     Loading settings from                 args.py:1166
+                               G:\Peton_programma\Rurik_2027\rurik_2
+                               027-6eccc4336a1e6f5be165488c1b22f5b83
+                               4106ad7\output\train_config.toml...
+  2026-11-01 21:29:46 INFO     Using v1 tokenizer               strategy_sd.py:28
+  2026-11-01 21:29:53 INFO     Using DreamBooth method.      train_network.py:937
+                      INFO     prepare images.          dreambooth_dataset.py:274
+                      INFO     get image size from name dreambooth_dataset.py:149
+                               of cache files
+  
+    0%|          | 0/29 [00:00<?, ?it/s]
+  100%|██████████| 29/29 [00:00<?, ?it/s]
+                      INFO     set image size from      dreambooth_dataset.py:179
+                               cache files: 0/29
+                      INFO     found directory          dreambooth_dataset.py:221
+                               G:\Peton_programma\Rurik
+                               _2027\rurik_2027-6eccc43
+                               36a1e6f5be165488c1b22f5b
+                               834106ad7\dataset\train\
+                               1_man18 contains 29
+                               image files
+  
+  read caption:   0%|          | 0/29 [00:00<?, ?it/s]
+  read caption: 100%|██████████| 29/29 [00:00<00:00, 7270.03it/s]
+                      INFO     29 train images with     dreambooth_dataset.py:320
+                               repeats.
+                      INFO     0 reg images with        dreambooth_dataset.py:324
+                               repeats.
+                      WARNING  no regularization images dreambooth_dataset.py:329
+                               /
+                               正則化画像が見つかりませ
+                               んでした
+                      INFO     [Dataset 0]                     config_util.py:587
+                                 batch_size: 1
+                                 resolution: (512, 512)
+                                 skip_image_resolution: None
+                                 resize_interpolation: None
+                                 enable_bucket: True
+                                 min_bucket_reso: 256
+                                 max_bucket_reso: 768
+                                 bucket_reso_steps: 64
+                                 bucket_no_upscale: False
+  
+                                 [Subset 0 of Dataset 0]
+                                   image_dir:
+                               "G:\Peton_programma\Rurik_2027\
+                               rurik_2027-6eccc4336a1e6f5be165
+                               488c1b22f5b834106ad7\dataset\tr
+                               ain\1_man18"
+                                   image_count: 29
+                                   num_repeats: 1
+                                   shuffle_caption: True
+                                   keep_tokens: 1
+                                   caption_dropout_rate: 0.0
+                                   caption_dropout_every_n_epo
+                               chs: 0
+                                   caption_tag_dropout_rate:
+                               0.0
+                                   caption_prefix: None
+                                   caption_suffix: None
+                                   color_aug: False
+                                   flip_aug: False
+                                   face_crop_aug_range: None
+                                   random_crop: False
+                                   token_warmup_min: 1,
+                                   token_warmup_step: 0,
+                                   alpha_mask: False
+                                   resize_interpolation: None
+                                   custom_attributes: {}
+                                   is_reg: False
+                                   class_tokens: man18
+                                   caption_extension: .txt
+  
+  
+                      INFO     [Prepare dataset 0]             config_util.py:599
+                      INFO     loading image sizes.                dataset.py:623
+  
+    0%|          | 0/29 [00:00<?, ?it/s]
+   62%|██████▏   | 18/29 [00:00<00:00, 167.71it/s]
+  100%|██████████| 29/29 [00:00<00:00, 267.71it/s]
+                      INFO     make buckets                        dataset.py:646
+                      INFO     number of images (including         dataset.py:692
+                               repeats) /
+                               各bucketの画像枚数（繰り返し回数を
+                               含む）
+                      INFO     bucket 0: resolution (512, 512),    dataset.py:697
+                               count: 29
+                      INFO     mean ar error (without repeats):    dataset.py:705
+                               0.0
+                      INFO     preparing accelerator        train_network.py:1000
+  accelerator device: cuda
+                      INFO     loading model for process 0/1      model_io.py:407
+                      INFO     load StableDiffusion checkpoint:   model_io.py:361
+                               G:/models/dreamshaper_8.safetensor
+                               s
+  2026-11-01 21:29:56 INFO     UNet2DConditionModel: 64, 8, original_unet.py:1396
+                               768, False, False
+  2026-11-01 21:31:21 INFO     loading u-net: <All keys        model_util.py:1017
+                               matched successfully>
+  2026-11-01 21:31:34 INFO     loading vae: <All keys matched  model_util.py:1025
+                               successfully>
+  2026-11-01 21:31:44 INFO     loading text encoder: <All keys model_util.py:1082
+                               matched successfully>
+  2026-11-01 21:31:46 INFO     [Dataset 0]                        dataset.py:1311
+                      INFO     caching latents with caching        dataset.py:752
+                               strategy.
+                      INFO     caching latents...                  dataset.py:802
+  
+    0%|          | 0/29 [00:00<?, ?it/s]
+    3%|▎         | 1/29 [00:17<08:00, 17.17s/it]
+    7%|▋         | 2/29 [00:17<03:19,  7.40s/it]
+   10%|█         | 3/29 [00:18<01:48,  4.17s/it]
+   14%|█▍        | 4/29 [00:18<01:06,  2.65s/it]
+   17%|█▋        | 5/29 [00:18<00:43,  1.83s/it]
+   21%|██        | 6/29 [00:19<00:30,  1.31s/it]
+   24%|██▍       | 7/29 [00:19<00:21,  1.02it/s]
+   28%|██▊       | 8/29 [00:19<00:16,  1.30it/s]
+   31%|███       | 9/29 [00:19<00:12,  1.59it/s]
+   34%|███▍      | 10/29 [00:20<00:10,  1.86it/s]
+   38%|███▊      | 11/29 [00:20<00:08,  2.14it/s]
+   41%|████▏     | 12/29 [00:20<00:07,  2.40it/s]
+   45%|████▍     | 13/29 [00:21<00:06,  2.62it/s]
+   48%|████▊     | 14/29 [00:21<00:05,  2.76it/s]
+   52%|█████▏    | 15/29 [00:21<00:04,  2.90it/s]
+   55%|█████▌    | 16/29 [00:22<00:04,  2.95it/s]
+   59%|█████▊    | 17/29 [00:22<00:03,  3.03it/s]
+   62%|██████▏   | 18/29 [00:22<00:03,  3.09it/s]
+   66%|██████▌   | 19/29 [00:23<00:03,  3.16it/s]
+   69%|██████▉   | 20/29 [00:23<00:02,  3.21it/s]
+   72%|███████▏  | 21/29 [00:23<00:02,  3.23it/s]
+   76%|███████▌  | 22/29 [00:24<00:02,  3.25it/s]
+   79%|███████▉  | 23/29 [00:24<00:01,  3.24it/s]
+   83%|████████▎ | 24/29 [00:24<00:01,  3.23it/s]
+   86%|████████▌ | 25/29 [00:24<00:01,  3.22it/s]
+   90%|████████▉ | 26/29 [00:25<00:00,  3.26it/s]
+   93%|█████████▎| 27/29 [00:25<00:00,  3.21it/s]
+   97%|█████████▋| 28/29 [00:25<00:00,  3.25it/s]
+  100%|██████████| 29/29 [00:26<00:00,  3.26it/s]
+  100%|██████████| 29/29 [00:26<00:00,  1.11it/s]
+  import network module: networks.lora
+  2026-11-01 21:32:12 INFO     create LoRA network. base dim (rank):  lora.py:935
+                               16, alpha: 8
+                      INFO     neuron dropout: p=None, rank dropout:  lora.py:936
+                               p=None, module dropout: p=None
+                      INFO     create LoRA for Text Encoder:         lora.py:1030
+                      INFO     create LoRA for Text Encoder: 72      lora.py:1035
+                               modules.
+  2026-11-01 21:32:13 INFO     create LoRA for U-Net: 192 modules.   lora.py:1043
+                      INFO     enable LoRA for text encoder: 72      lora.py:1084
+                               modules
+                      INFO     enable LoRA for U-Net: 192 modules    lora.py:1089
+                      INFO     CrossAttnDownBlock2D False   original_unet.py:1530
+                               -> True
+                      INFO     CrossAttnDownBlock2D False   original_unet.py:1530
+                               -> True
+                      INFO     CrossAttnDownBlock2D False   original_unet.py:1530
+                               -> True
+                      INFO     DownBlock2D False -> True    original_unet.py:1530
+                      INFO     UNetMidBlock2DCrossAttn      original_unet.py:1530
+                               False -> True
+                      INFO     UpBlock2D False -> True      original_unet.py:1530
+                      INFO     CrossAttnUpBlock2D False ->  original_unet.py:1530
+                               True
+                      INFO     CrossAttnUpBlock2D False ->  original_unet.py:1530
+                               True
+                      INFO     CrossAttnUpBlock2D False ->  original_unet.py:1530
+                               True
+  prepare optimizer, data loader etc.
+                      INFO     use 8-bit AdamW optimizer | {}    optimizer.py:106
+  override steps. steps for 25 epochs is / 指定エポックまでのステップ数: 725
+  running training / 学習開始
+    num train images * repeats / 学習画像の数×繰り返し回数: 29
+    num validation images * repeats / 学習画像の数×繰り返し回数: 0
+    num reg images / 正則化画像の数: 0
+    num batches per epoch / 1epochのバッチ数: 29
+    num epochs / epoch数: 25
+    batch size per device / バッチサイズ: 1
+    gradient accumulation steps / 勾配を合計するステップ数 = 1
+    total optimization steps / 学習ステップ数: 725
+  2026-11-01 21:32:21 INFO     unet dtype: torch.float16,   train_network.py:1519
+                               device: cuda:0
+                      INFO     text_encoder [0] dtype:      train_network.py:1525
+                               torch.float16, device:
+                               cuda:0
+  
+  steps:   0%|          | 0/725 [00:00<?, ?it/s]
+  epoch 1/25
+  
+  A matching Triton is not available, some optimizations will not be enabled
+  Traceback (most recent call last):
+    File "G:\kohya_ss\venv\lib\site-packages\xformers\__init__.py", line 57, in _is_triton_available
+      import triton  # noqa
+  ModuleNotFoundError: No module named 'triton'
+  2026-11-01 21:33:00.127066: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+  2026-11-01 21:33:06.980949: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+  A matching Triton is not available, some optimizations will not be enabled
+  Traceback (most recent call last):
+    File "G:\kohya_ss\venv\lib\site-packages\xformers\__init__.py", line 57, in _is_triton_available
+      import triton  # noqa
+  ModuleNotFoundError: No module named 'triton'
+  2026-11-01 21:33:26.310630: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+  2026-11-01 21:33:27.349030: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+  A matching Triton is not available, some optimizations will not be enabled
+  Traceback (most recent call last):
+    File "G:\kohya_ss\venv\lib\site-packages\xformers\__init__.py", line 57, in _is_triton_available
+      import triton  # noqa
+  ModuleNotFoundError: No module named 'triton'
+  2026-11-01 21:33:36.691803: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+  2026-11-01 21:33:37.825886: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+  A matching Triton is not available, some optimizations will not be enabled
+  Traceback (most recent call last):
+    File "G:\kohya_ss\venv\lib\site-packages\xformers\__init__.py", line 57, in _is_triton_available
+      import triton  # noqa
+  ModuleNotFoundError: No module named 'triton'
+  2026-11-01 21:33:48.298768: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+  2026-11-01 21:33:49.468251: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+  ...останавливаю после текущей строки лога
+  A matching Triton is not available, some optimizations will not be enabled
+  ОБУЧЕНИЕ ПРЕРВАНО пользователем
+
+ОСТАНОВЛЕНО пользователем.

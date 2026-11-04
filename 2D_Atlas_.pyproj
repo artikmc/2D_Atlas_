@@ -21,6 +21,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="ai_generate.py" />
     <Compile Include="animation_viewer.py" />
     <Compile Include="atlas_interface.py" />
     <Compile Include="atlas_loader.py" />
@@ -31,12 +32,14 @@
     <Compile Include="export_window.py" />
     <Compile Include="file_selector.py" />
     <Compile Include="frame_detector.py" />
+    <Compile Include="generate_window.py" />
     <Compile Include="image_grid.py" />
     <Compile Include="image_saver.py" />
     <Compile Include="image_splitter.py" />
     <Compile Include="lora_train.py" />
     <Compile Include="paint_app.py" />
     <Compile Include="results_viewer.py" />
+    <Compile Include="sd_generate.py" />
     <Compile Include="train_window.py" />
     <Compile Include="_2D_Atlas_main.py" />
     <Compile Include="language_manager.py" />

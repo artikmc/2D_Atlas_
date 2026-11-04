@@ -9,6 +9,7 @@ dataset_export.py: логика отдельно, окно отдельно (exp
 """
 
 import os
+import re
 import shutil
 import subprocess
 
@@ -286,33 +287,104 @@ def write_config(cfg, path):
     return path
 
 
+# Строки, которые kohya печатает на каждом шаге, но они безвредны:
+# xformers предупреждает об отсутствующем triton (нужен только на Linux).
+_NOISE = ("A matching Triton is not available",
+          "TF_ENABLE_ONEDNN_OPTS",
+          "oneDNN custom operations are on")
+
+
+def _is_noise(line):
+    return any(p in line for p in _NOISE)
+
+
+# tqdm-прогресс: строка вида ' 12%|█ | 90/725 [00:30<03:00, 3.5it/s]'.
+_RE_PROGRESS = re.compile(r"^\s*(\d{1,3})%\|")
+
+
+def _progress_pct(line):
+    """Если строка похожа на прогресс tqdm ('12%| | 90/725') — её процент.
+
+    Иначе None: обычная информационная строка показывается как есть.
+    """
+    m = _RE_PROGRESS.search(line)
+    if not m:
+        return None
+    try:
+        return int(m.group(1))
+    except (TypeError, ValueError):
+        return None
+
+
 def run_training(cmd, cwd, on_line, should_stop=None):
     """Запускает обучение и отдаёт каждую строку лога в on_line.
 
-    Вывод kohya идёт построчно, поэтому строка появляется в окне сразу,
-    а не после окончания обучения (оно идёт десятки минут).
+    Прогресс kohya (tqdm) обновляет одну строку символом '\r' без перевода
+    строки. Читаем вывод посимвольно и считаем концом строки и '\n', и '\r':
+    иначе окно показывало бы '0/725' и молчало, хотя обучение шло.
+
+    Строку прогресса показываем не каждую: только когда шаг изменился на
+    5% и больше, иначе 725 шагов забьют лог тысячей почти одинаковых строк.
 
     :param cmd: список аргументов (без shell)
     :param cwd: рабочая папка — kohya требует запуска из своей папки
     :param on_line: функция(str) для каждой строки
     :param should_stop: функция() -> bool; True прерывает обучение
-    :return: код возврата (0 — успешно, -1 — прервано)
+    :return: код возврата (0 — успешно, -1 — прервано, -2 — не запустилось)
     """
+    env = os.environ.copy()
+    env["TF_CPP_MIN_LOG_LEVEL"] = "3"          # меньше шума от tensorflow
+    env["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+
     try:
         proc = subprocess.Popen(
             cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, encoding="utf-8", errors="replace", bufsize=1)
+            text=True, encoding="utf-8", errors="replace", bufsize=1, env=env)
     except FileNotFoundError as e:
         on_line(f"НЕ ЗАПУСТИЛОСЬ: {e}")
         return -2
 
+    last = ""       # прошлая показанная строка, чтобы не печатать одну и ту же
+    skip_tb = 0     # пропустить 3 строки Traceback после triton-предупреждения
+    last_pct = -10  # какой процент шага показывали последний раз
     try:
-        for line in proc.stdout:
-            on_line(line.rstrip())
-            if should_stop and should_stop():
-                proc.terminate()
-                on_line("ОБУЧЕНИЕ ПРЕРВАНО пользователем")
-                return -1
+        buf = ""
+        while True:
+            ch = proc.stdout.read(1)
+            if not ch:
+                break
+            if ch in ("\r", "\n"):
+                line = buf.rstrip()
+                buf = ""
+                if not line:
+                    continue
+                if _is_noise(line):
+                    if "Triton" in line:
+                        skip_tb = 4   # Traceback + File + import + ModuleNotFoundError
+                    continue
+                if skip_tb:
+                    skip_tb -= 1
+                    continue
+                pct = _progress_pct(line)
+                if pct is not None:
+                    if pct - last_pct < 5 and pct < 100:
+                        continue
+                    last_pct = pct
+                if line != last:
+                    on_line(line)
+                    last = line
+                if should_stop and should_stop():
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                    on_line("ОБУЧЕНИЕ ПРЕРВАНО пользователем")
+                    return -1
+            else:
+                buf += ch
+        if buf.strip() and not _is_noise(buf):
+            on_line(buf.rstrip())
     finally:
         if proc.stdout:
             proc.stdout.close()

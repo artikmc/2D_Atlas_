@@ -112,6 +112,13 @@ class TrainWindow:
         self.btn_close = tk.Button(btns, text="Закрыть", command=self.close)
         self.btn_close.pack(side=tk.RIGHT)
 
+        # копирование лога остаётся доступным даже во время работы
+        self.btn_copy = tk.Button(btns, text="Копировать лог", command=self.do_copy_log)
+        self.btn_copy.pack(side=tk.RIGHT, padx=(6, 0))
+
+        self.btn_logfile = tk.Button(btns, text="Лог в файл...", command=self.do_save_log)
+        self.btn_logfile.pack(side=tk.RIGHT, padx=(6, 0))
+
         # ---------- лог ----------
         log_wrap = tk.Frame(self.window)
         log_wrap.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
@@ -122,6 +129,15 @@ class TrainWindow:
         self.log.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         sc.pack(side=tk.RIGHT, fill=tk.Y)
         self.log.configure(state="disabled")
+
+        # правый клик в логе — те же действия, что кнопками
+        self.log_menu = tk.Menu(self.log, tearoff=0)
+        self.log_menu.add_command(label="Копировать всё", command=self.do_copy_log)
+        self.log_menu.add_command(label="Выделить всё", command=self.do_select_all)
+        self.log_menu.add_separator()
+        self.log_menu.add_command(label="Сохранить в файл...", command=self.do_save_log)
+        self.log.bind("<Button-3>", self._show_log_menu)
+        self.log.bind("<Control-a>", lambda e: (self.do_select_all(), "break")[1])
 
         self.write("Обучение LoRA через kohya_ss.")
         self.write("1) укажите базовую модель .safetensors (SD 1.5) и папку kohya_ss;")
@@ -160,6 +176,65 @@ class TrainWindow:
         self.log.insert(tk.END, text + "\n")
         self.log.see(tk.END)
         self.log.configure(state="disabled")
+
+    # ---------- лог: копирование и сохранение ----------
+    def log_text(self):
+        """Весь текст лога как строка (без лишних пустых строк в конце)."""
+        return self.log.get("1.0", tk.END).rstrip("\n")
+
+    def _show_log_menu(self, event):
+        try:
+            self.log_menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            self.log_menu.grab_release()
+
+    def do_select_all(self):
+        self.log.tag_add(tk.SEL, "1.0", tk.END)
+        self.log.mark_set(tk.INSERT, "1.0")
+        self.log.see("1.0")
+
+    def do_copy_log(self):
+        """Кладёт весь лог в буфер обмена.
+
+        Нужно, чтобы отдать результат текстом, а не скриншотом.
+        """
+        text = self.log_text()
+        if not text.strip():
+            self.write("  лог пуст — копировать нечего")
+            return
+        try:
+            self.window.clipboard_clear()
+            self.window.clipboard_append(text)
+            self.window.update_idletasks()
+        except tk.TclError as e:
+            self.write(f"  не удалось скопировать: {e}")
+            return
+        self.write(f"  лог скопирован в буфер ({len(text)} символов, "
+                   f"{text.count(chr(10)) + 1} строк)")
+
+    def do_save_log(self):
+        """Сохраняет лог в .txt (UTF-8 с BOM — открывается в Блокноте)."""
+        text = self.log_text()
+        if not text.strip():
+            self.write("  лог пуст — сохранять нечего")
+            return
+        import time as _time
+        default = "kohya_log_" + _time.strftime("%Y%m%d_%H%M%S") + ".txt"
+        start = self.var_output.get().strip() or "."
+        path = filedialog.asksaveasfilename(
+            parent=self.window, title="Сохранить лог",
+            initialfile=default, initialdir=start,
+            defaultextension=".txt",
+            filetypes=[("Текст", "*.txt"), ("Все файлы", "*.*")])
+        if not path:
+            return
+        try:
+            with open(path, "w", encoding="utf-8-sig", newline="\r\n") as f:
+                f.write(text + "\n")
+        except OSError as e:
+            self.write(f"  не удалось сохранить: {e}")
+            return
+        self.write(f"  лог сохранён: {os.path.abspath(path)}")
 
     def _busy(self, on):
         state = tk.DISABLED if on else tk.NORMAL
@@ -222,9 +297,13 @@ class TrainWindow:
         except ValueError as e:
             raise ValueError(f"проверьте числа в параметрах обучения ({e})") from e
 
+        # kohya запускается из своей папки (sd-scripts), поэтому ей нужны
+        # АБСОЛЮТНЫЕ пути: относительный 'dataset\\train' она ищет внутри
+        # sd-scripts и находит пусто. Разворачиваем в абсолютные заранее.
         cfg = lt.build_config(
-            train_data_dir=os.path.join(self.var_dataset.get().strip(), "train"),
-            output_dir=self.var_output.get().strip(),
+            train_data_dir=os.path.abspath(
+                os.path.join(self.var_dataset.get().strip(), "train")),
+            output_dir=os.path.abspath(self.var_output.get().strip()),
             base_model=self.var_model.get().strip(),
             output_name=self.var_name.get().strip() or "lora",
             params=params,
@@ -298,7 +377,8 @@ class TrainWindow:
             repeats = int(self.var_repeats.get())
         except ValueError:
             repeats = 1
-        root, total, msgs = lt.prepare_train_dir(self.var_dataset.get().strip(), repeats)
+        root, total, msgs = lt.prepare_train_dir(
+            os.path.abspath(self.var_dataset.get().strip()), repeats)
         for m in msgs:
             self.write("  " + m)
         if root is None:
@@ -323,8 +403,16 @@ class TrainWindow:
                 on_line=lambda line: self.write("  " + line),
                 should_stop=lambda: self.stop_flag)
             if code == 0:
-                self.write("\nГОТОВО: обучение завершилось успешно.")
-                self.write(f"  файлы LoRA: {os.path.abspath(cfg['output_dir'])}")
+                # код 0 не гарантирует, что было обучение: при пустом
+                # датасете kohya тоже выходит с 0. Проверяем файл LoRA.
+                lora = self._find_lora(cfg["output_dir"], cfg["output_name"])
+                if lora:
+                    self.write("\nГОТОВО: обучение завершилось успешно.")
+                    self.write(f"  файл LoRA: {lora}")
+                else:
+                    self.write("\nНЕ ЗАПУЩЕНО: файл LoRA не создан — kohya "
+                               "не нашла кадров (см. строки 'No data found' "
+                               "или '0 train images' выше).")
             elif code == -1:
                 self.write("\nОСТАНОВЛЕНО пользователем.")
             else:
@@ -336,6 +424,27 @@ class TrainWindow:
         if self.worker and self.worker.is_alive():
             self.stop_flag = True
             self.write("  ...останавливаю после текущей строки лога")
+
+    def _find_lora(self, output_dir, output_name):
+        """Ищет свежий файл LoRA в папке результата.
+
+        kohya пишет либо '<имя>.safetensors', либо '<имя>-last.safetensors'
+        (при save_model_as=safetensors). Возвращает путь к самому
+        свежему из них или None, если ничего нет.
+        """
+        try:
+            cands = []
+            for f in os.listdir(output_dir):
+                if not f.lower().endswith(".safetensors"):
+                    continue
+                if f.lower().startswith(output_name.lower()):
+                    full = os.path.join(output_dir, f)
+                    cands.append((os.path.getmtime(full), full))
+            if not cands:
+                return None
+            return max(cands)[1]
+        except OSError:
+            return None
 
     def _in_thread(self, func):
         self._busy(True)

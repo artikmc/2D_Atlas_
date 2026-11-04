@@ -6,7 +6,6 @@ from PIL import Image, ImageTk
 from language_manager import LanguageManager
 from enhance_window import EnhanceWindow
 from paint_app import PaintApp
-from export_window import ExportWindow
 
 class AtlasInterface:
     def __init__(self, root):
@@ -58,10 +57,13 @@ class AtlasInterface:
         self.btn_ai_module = tk.Button(self.root, command=self.use_ai_module)
         self.btn_settings = tk.Button(self.root, command=self.open_settings)
         self.btn_paint = tk.Button(self.root, command=self.open_paint)
+        self.btn_generate = tk.Button(self.root, text="ИИ: кадры",
+                                      command=self.open_generate_window)
         self.btn_exit = tk.Button(self.root, command=self.root.quit)
         
         for btn in [self.btn_select_file, self.btn_show_results, 
-                   self.btn_ai_module, self.btn_settings, self.btn_paint, self.btn_exit]:
+                   self.btn_ai_module, self.btn_generate, self.btn_settings,
+                   self.btn_paint, self.btn_exit]:
             btn.pack(pady=10)
 
     def language_changed(self):
@@ -81,8 +83,9 @@ class AtlasInterface:
         ResultsViewer(self.root)  # Создаем экземпляр ResultsViewer
 
     def use_ai_module(self):
-        """Работа с модулем ИИ: окно экспорта датасета."""
-        ExportWindow(self.root)
+        """Работа с модулем ИИ: экспорт датасета, обучение LoRA, генерация кадров."""
+        from export_window import ExportWindow
+        ExportWindow(self.root, db_path="atlas_database.db")
 
     def clear_widgets(self):
         """Очистить все виджеты на экране."""
@@ -95,6 +98,14 @@ class AtlasInterface:
         #from settings_window import SettingsWindow  # Этот модуль мы создадим позже
         #SettingsWindow(self.root)  # Передаем root для модального окна
    
+    def open_generate_window(self):
+        """Открывает окно генерации кадров обученной LoRA."""
+        if hasattr(self, "_generate_window") and self._generate_window.window.winfo_exists():
+            self._generate_window.window.lift()
+            return
+        from generate_window import GenerateWindow
+        self._generate_window = GenerateWindow(self.root, db_path="atlas_database.db")
+
     def open_enhance_window(self):
         if not hasattr(self, 'current_image'):
             print("Нет изображения для улучшения")

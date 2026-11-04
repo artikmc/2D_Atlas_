@@ -86,6 +86,15 @@ class ExportWindow:
         self.btn_close = tk.Button(btns, text="Закрыть", command=self.close)
         self.btn_close.pack(side=tk.RIGHT)
 
+        # следующие шаги конвейера — из этого же окна
+        self.btn_train = tk.Button(btns, text="Обучение LoRA...",
+                                   command=self.open_train)
+        self.btn_train.pack(side=tk.RIGHT, padx=(0, 6))
+
+        self.btn_generate = tk.Button(btns, text="Генерация кадров...",
+                                      command=self.open_generate)
+        self.btn_generate.pack(side=tk.RIGHT, padx=(0, 6))
+
         # ---------- лог ----------
         log_wrap = tk.Frame(self.window)
         log_wrap.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
@@ -291,6 +300,24 @@ class ExportWindow:
         elif checked:
             self.write(f"  коды тегов верны: '1' (=49) во всех проверенных "
                        f"({checked} вхождений)")
+
+    def open_train(self):
+        """Открывает окно обучения LoRA."""
+        try:
+            from train_window import TrainWindow
+        except Exception as e:
+            self.write(f"  НЕТ: окно обучения не открылось — {e}")
+            return
+        TrainWindow(self.window, dataset_root=self.out_var.get().strip() or "dataset")
+
+    def open_generate(self):
+        """Открывает окно генерации кадров (финальный шаг конвейера)."""
+        try:
+            from generate_window import GenerateWindow
+        except Exception as e:
+            self.write(f"  НЕТ: окно генерации не открылось — {e}")
+            return
+        GenerateWindow(self.window, db_path=self.db_path)
 
     def close(self):
         if self.worker and self.worker.is_alive():

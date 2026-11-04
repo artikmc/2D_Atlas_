@@ -1,0 +1,55 @@
+{
+  "model": "G:\\models\\dreamshaper_8.safetensors",
+  "lora": "G:\\Peton_programma\\Rurik_2027\\rurik_2027-6eccc4336a1e6f5be165488c1b22f5b834106ad7\\output\\man18_lora.safetensors",
+  "lora_scale": 1.0,
+  "kohya_root": "G:\\kohya_ss",
+  "out_dir": "G:\\Peton_programma\\Rurik_2027\\rurik_2027-6eccc4336a1e6f5be165488c1b22f5b834106ad7\\output\\ai_frames\\20261102_211303",
+  "width": 512,
+  "height": 512,
+  "steps": 24,
+  "cfg": 7.0,
+  "negative": "blurry, photo, 3d render, realistic, shading, gradient, text, watermark, frame, border, background scene",
+  "init": "G:\\Peton_programma\\Rurik_2027\\rurik_2027-6eccc4336a1e6f5be165488c1b22f5b834106ad7\\output\\ai_frames\\20261102_211303\\reference.png",
+  "tasks": [
+    {
+      "prefix": "00_standing",
+      "prompt": "man18, standing, pixel art, sprite, transparent background",
+      "count": 4,
+      "seed": 42,
+      "strength": 0.45,
+      "strength_end": 0.7
+    },
+    {
+      "prefix": "01_walking",
+      "prompt": "man18, walking, pixel art, sprite, transparent background",
+      "count": 4,
+      "seed": 42,
+      "strength": 0.45,
+      "strength_end": 0.7
+    },
+    {
+      "prefix": "02_running",
+      "prompt": "man18, running, pixel art, sprite, transparent background",
+      "count": 4,
+      "seed": 42,
+      "strength": 0.45,
+      "strength_end": 0.7
+    },
+    {
+      "prefix": "03_jumping",
+      "prompt": "man18, jumping, pixel art, sprite, transparent background",
+      "count": 4,
+      "seed": 42,
+      "strength": 0.45,
+      "strength_end": 0.7
+    },
+    {
+      "prefix": "04_falling",
+      "prompt": "man18, falling, pixel art, sprite, transparent background",
+      "count": 4,
+      "seed": 42,
+      "strength": 0.45,
+      "strength_end": 0.7
+    }
+  ]
+}
